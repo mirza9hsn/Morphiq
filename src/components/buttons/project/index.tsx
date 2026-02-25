@@ -4,9 +4,6 @@ import React from 'react'
 import { Loader2 } from 'lucide-react'
 import { PlusIcon } from 'lucide-react'
 import { useProjectCreation } from '@/hooks/use-project'
-type Props = {
-
-}
 
 const CreateProject = () => {
     const { createProject, canCreate, isCreating } = useProjectCreation()
