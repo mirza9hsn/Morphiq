@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { UseFormRegister, FieldErrors } from 'react-hook-form'
-import GoogleOAuth from './oauth/google'
+import GoogleOAuth from './buttons/oauth/google'
 
 type SignInFields = {
     email: string

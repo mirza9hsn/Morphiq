@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Button } from '../ui/button'
+import { Button } from '../../ui/button'
 import { useAuthActions } from '@convex-dev/auth/react'
 
 export default function GoogleOAuth() {
