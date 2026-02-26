@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAppSelector } from '@/redux/store'
 import CreateProject from '@/components/buttons/project'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 type TabProps = {
     label: string
@@ -97,6 +98,7 @@ const Navbar = () => {
             </div>
             <div className="flex items-center gap-4 justify-end">
                 <span className="text-sm text-white/50">TODO: credits</span>
+                <ThemeToggle />
                 <Button
                     variant="secondary"
                     className="rounded-full h-12 w-12 flex items-center justify-center
