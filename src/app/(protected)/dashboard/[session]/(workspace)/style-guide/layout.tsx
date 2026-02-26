@@ -31,7 +31,7 @@ const tabs = [
 const Layout = ({ children }: Props) => {
     const pathname = usePathname()
     const params = useSearchParams()
-    const me = useAppSelector((state) => state.profile)
+    const me = useAppSelector((state) => state.profile.user)
 
     const projectId = params.get('project')
     const safeProjectId = projectId && projectId !== 'null' ? projectId : null

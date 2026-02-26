@@ -49,7 +49,7 @@ const ProjectsList = () => {
                     {projects.map((project: any) => (
                         <Link
                             key={project._id}
-                            href={`/dashboard/${user?.name}/canvas?project=${project._id}`}
+                            href={user?.name ? `/dashboard/${user.name}/canvas?project=${project._id}` : '#'}
                             className="group cursor-pointer"
                         >
                             <div className="space-y-3">

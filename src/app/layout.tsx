@@ -55,7 +55,7 @@ export default async function RootLayout({
               defaultTheme="dark"
               disableTransitionOnChange
             >
-              <ReduxProvider preloadedState={{ profile }}>
+              <ReduxProvider preloadedState={{ profile: { user: profile } }}>
                 {children}
                 <Toaster />
               </ReduxProvider>

@@ -24,7 +24,7 @@ const Navbar = () => {
     const projectId = params.get('project')
     const safeProjectId = projectId && projectId !== 'null' ? projectId : null
 
-    const me = useAppSelector((state) => state.profile)
+    const me = useAppSelector((state) => state.profile.user)
 
     const project = useQuery(
         api.projects.getProject,
@@ -37,16 +37,16 @@ const Navbar = () => {
     const tabs: TabProps[] = [
         {
             label: 'Canvas',
-            href: safeProjectId
+            href: safeProjectId && me?.name
                 ? `/dashboard/${me.name}/canvas?project=${safeProjectId}`
-                : `/dashboard/${me.name}/canvas`,
+                : me?.name ? `/dashboard/${me.name}/canvas` : '#',
             icon: <Hash className="h-4 w-4" />,
         },
         {
             label: 'Style Guide',
-            href: safeProjectId
+            href: safeProjectId && me?.name
                 ? `/dashboard/${me.name}/style-guide?project=${safeProjectId}`
-                : `/dashboard/${me.name}/style-guide`,
+                : me?.name ? `/dashboard/${me.name}/style-guide` : '#',
             icon: <LayoutTemplate className="h-4 w-4" />,
         },
     ]
@@ -61,7 +61,7 @@ const Navbar = () => {
             {/* LEFT: Logo */}
             <div className="flex items-center gap-4">
                 <Link
-                    href={`/dashboard/${me.name}`}
+                    href={me?.name ? `/dashboard/${me.name}` : '#'}
                     className="w-8 h-8 rounded-full border-2 border-white bg-black flex items-center justify-center"
                 >
                     <div className="w-4 h-4 rounded-full bg-white" />
@@ -108,7 +108,7 @@ const Navbar = () => {
                     <CircleHelp className="size-5 text-white" />
                 </Button>
                 <Avatar className="size-12 ml-2">
-                    <AvatarImage src={me.image || ''} />
+                    <AvatarImage src={me?.image || ''} />
                     <AvatarFallback>
                         <User className="size-5 text-black" />
                     </AvatarFallback>
