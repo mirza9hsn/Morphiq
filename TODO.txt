@@ -1,4 +1,0 @@
-Text element fixes, not resize with selection, italic, undline buttons not working in text-sidebar.
-Change text-sidebar styling
-Copy/Paste elements
-hover selection highlight
