@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAppSelector } from '@/redux/store'
 import CreateProject from '@/components/buttons/project'
 import { ThemeToggle } from '@/components/theme-toggle'
+import Autosave from '../canvas/autosave'
 
 type TabProps = {
     label: string
@@ -55,6 +56,9 @@ const Navbar = () => {
     const hasStyleGuide = pathname.includes("style-guide")
 
 
+    const creditBalance = useQuery(api.subscription.getCreditsBalance, {
+        userId: me.id as Id<'users'>,
+    })
 
     return (
         <div className="grid grid-cols-2 lg:grid-cols-3 p-6 fixed top-0 left-0 right-0 z-50">
@@ -97,7 +101,7 @@ const Navbar = () => {
                 </div>
             </div>
             <div className="flex items-center gap-4 justify-end">
-                <span className="text-sm text-white/50">TODO: credits</span>
+                <span className="text-sm text-white/50">{creditBalance} credits</span>
                 <ThemeToggle />
                 <Button
                     variant="secondary"
@@ -113,7 +117,7 @@ const Navbar = () => {
                         <User className="size-5 text-black" />
                     </AvatarFallback>
                 </Avatar>
-                {/* {hasCanvas && <Autosave />}*/}
+                {hasCanvas && <Autosave />}
                 {!hasCanvas && !hasStyleGuide && <CreateProject />}
             </div>
         </div>

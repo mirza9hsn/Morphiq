@@ -7,7 +7,7 @@ interface AutosaveProjectRequest {
         shapes: Record<string, unknown>
         tool: string
         selected: Record<string, unknown>
-        frameCount: number
+        frameCounter: number
     }
     viewportData?: {
         scale: number
@@ -38,3 +38,5 @@ export const ProjectApi = createApi({
         }),
     }),
 })
+
+export const { useAutosaveProjectMutation } = ProjectApi
