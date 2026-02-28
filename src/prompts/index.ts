@@ -139,6 +139,22 @@ format: {
     success: boolean;
 }
       `,
+    user: (imageUrlsLength: number) => `Analyze these ${imageUrlsLength} mood board images and generate a complete design system.
+
+Generate exactly 5 color sections in this order:
+1. "Primary Colours" - exactly 4 swatches
+2. "Secondary & Accent Colors" - exactly 4 swatches
+3. "UI Component Colors" - exactly 6 swatches
+4. "Utility & Form Colors" - exactly 3 swatches
+5. "Status & Feedback Colors" - exactly 2 swatches
+
+Generate exactly 3 typography sections:
+1. "Headings" - with heading styles (H1, H2, H3)
+2. "Body Text" - with body styles (Regular, Small, Caption)
+3. "UI Elements" - with UI styles (Button, Label, Input)
+
+Extract colors that work harmoniously together and create typography that matches the aesthetic.
+Return ONLY the JSON object matching the exact schema structure.`,
   },
   generativeUi: {
     system: `
@@ -327,44 +343,43 @@ ID VERIFICATION:
 Output Format
 Return ONLY the HTML wrapped in <div data-generated-ui>. No explanations, no comments, no additional text.
     `,
+    user: (colors: any[], typography: any[]) => `Use the user-provided styleGuide for all visual decisions: map its colors, typography scale, spacing, and radii directly to Tailwind v4 utilities (use arbitrary color classes like text-[#RRGGBB] / bg-[#RRGGBB] when hexes are given), enforce WCAG AA contrast (≥4.5:1 body, ≥3:1 large text), and if any token is missing fall back to neutral light defaults. Never invent new tokens; keep usage consistent across components.
+
+Inspiration images (URLs):
+
+You will receive up to 6 image URLs in images[].
+
+Use them only for interpretation (mood/keywords/subject matter) to bias choices within the existing styleGuide tokens (e.g., which primary/secondary to emphasize, where accent appears, light vs. dark sections).
+
+Do not derive new colors or fonts from images; do not create tokens that aren’t in styleGuide.
+
+Do not echo the URLs in the output JSON; use them purely as inspiration.
+
+If an image URL is unreachable/invalid, ignore it without degrading output quality.
+
+If images imply low-contrast contexts, adjust class pairings (e.g., text-[#FFFFFF] on bg-[#0A0A0A], stronger border/ring from tokens) to maintain accessibility while staying inside the styleGuide.
+
+For any required illustrative slots, use a public placeholder image (deterministic seed) only if the schema requires an image field; otherwise don’t include images in the JSON.
+
+On conflicts: the styleGuide always wins over image cues.
+    colors: ${colors
+        .map((color: any) =>
+          color.swatches
+            .map((swatch: any) => {
+              return `${swatch.name}: ${swatch.hexColor}, ${swatch.description}`
+            })
+            .join(', ')
+        )
+        .join(', ')}
+    typography: ${typography
+        .map((typography: any) =>
+          typography.styles
+            .map((style: any) => {
+              return `${style.name}: ${style.description}, ${style.fontFamily}, ${style.fontWeight}, ${style.fontSize}, ${style.lineHeight}`
+            })
+            .join(', ')
+        )
+        .join(', ')}
+    `
   },
 }
-
-// const userPrompt = `Use the user-provided styleGuide for all visual decisions: map its colors, typography scale, spacing, and radii directly to Tailwind v4 utilities (use arbitrary color classes like text-[#RRGGBB] / bg-[#RRGGBB] when hexes are given), enforce WCAG AA contrast (≥4.5:1 body, ≥3:1 large text), and if any token is missing fall back to neutral light defaults. Never invent new tokens; keep usage consistent across components.
-
-// Inspiration images (URLs):
-
-// You will receive up to 6 image URLs in images[].
-
-// Use them only for interpretation (mood/keywords/subject matter) to bias choices within the existing styleGuide tokens (e.g., which primary/secondary to emphasize, where accent appears, light vs. dark sections).
-
-// Do not derive new colors or fonts from images; do not create tokens that aren’t in styleGuide.
-
-// Do not echo the URLs in the output JSON; use them purely as inspiration.
-
-// If an image URL is unreachable/invalid, ignore it without degrading output quality.
-
-// If images imply low-contrast contexts, adjust class pairings (e.g., text-[#FFFFFF] on bg-[#0A0A0A], stronger border/ring from tokens) to maintain accessibility while staying inside the styleGuide.
-
-// For any required illustrative slots, use a public placeholder image (deterministic seed) only if the schema requires an image field; otherwise don’t include images in the JSON.
-
-// On conflicts: the styleGuide always wins over image cues.
-//     colors: ${colors
-//       .map((color: any) =>
-//         color.swatches
-//           .map((swatch: any) => {
-//             return `${swatch.name}: ${swatch.hexColor}, ${swatch.description}`
-//           })
-//           .join(', ')
-//       )
-//       .join(', ')}
-//     typography: ${typography
-//       .map((typography: any) =>
-//         typography.styles
-//           .map((style: any) => {
-//             return `${style.name}: ${style.description}, ${style.fontFamily}, ${style.fontWeight}, ${style.fontSize}, ${style.lineHeight}`
-//           })
-//           .join(', ')
-//       )
-//       .join(', ')}
-//     `

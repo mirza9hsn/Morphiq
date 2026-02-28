@@ -5,6 +5,8 @@ import { AppDispatch, useAppDispatch, useAppSelector } from "@/redux/store"
 import { addArrow, addEllipse, addFrame, addLine, addRect, addText, clearSelection, removeShape, selectShape, setTool, Shape, updateShape, addFreeDrawShape, Tool, FrameShape, addGeneratedUI } from "@/redux/slice/shapes"
 import { panMove, wheelZoom, wheelPan, panStart, handToolEnable, panEnd } from "@/redux/slice/viewport"
 import { downloadBlob, generateFrameSnapshot } from "@/lib/frame-snapshot"
+import { nanoid } from "@reduxjs/toolkit"
+import { toast } from "sonner"
 
 
 
@@ -891,13 +893,123 @@ export const useFrame = (shape: FrameShape) => {
             }
 
 
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                body: formData,
+            })
 
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('API Error:', { status: response.status, text: errorText })
+                throw new Error(
+                    `API request failed: ${response.status} ${response.statusText} - ${errorText}`
+                )
+            }
 
-        } catch (error) { }
+            const generatedUIPosition = {
+                x: shape.x + shape.w + 50, // 50px spacing from frame
+                y: shape.y,
+                w: Math.max(400, shape.w), // At least 400px wide, or frame width if larger
+                h: Math.max(300, shape.h), // At least 300px high, or frame height if larger
+            }
+
+            const generatedUIId = nanoid()
+
+            dispatch(
+                addGeneratedUI({
+                    ...generatedUIPosition,
+                    id: generatedUIId,
+                    uiSpecData: null, // Start with null for live rendering
+                    sourceFrameId: shape.id,
+                })
+            )
+
+            const reader = response.body?.getReader()
+            if (!reader) {
+                console.error('Response has no reader/body')
+                throw new Error('Response body is unavailable for streaming')
+            }
+
+            const decoder = new TextDecoder()
+            let accumulatedMarkup = ''
+
+            let lastUpdateTime = 0
+            const UPDATE_THROTTLE_MS = 200
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read()
+                    if (done) {
+                        // Update with final accumulated markup
+                        dispatch(
+                            updateShape({
+                                id: generatedUIId,
+                                patch: { uiSpecData: accumulatedMarkup },
+                            })
+                        )
+                        break
+                    }
+
+                    // Decode and accumulate the text markup text
+                    const chunk = decoder.decode(value, { stream: true })
+                    accumulatedMarkup += chunk
+
+                    // Existing throttling logic:
+                    const now = Date.now()
+                    if (now - lastUpdateTime >= UPDATE_THROTTLE_MS) {
+                        dispatch(
+                            updateShape({
+                                id: generatedUIId,
+                                patch: { uiSpecData: accumulatedMarkup },
+                            })
+                        )
+                        lastUpdateTime = now
+                    }
+                }
+            } catch (error) {
+                console.error('Stream Reading Error:', error)
+                toast.error(
+                    `Failed to generate UI design: ${error instanceof Error ? error.message : 'Unknown error'}`
+                )
+            } finally {
+                reader.releaseLock()
+            }
+        } catch (error) {
+            console.error('Generation Process Error:', error)
+            toast.error(
+                `Generation error: ${error instanceof Error ? error.message : 'Unknown error'}`
+            )
+        } finally {
+            setIsGenerating(false)
+        }
     }
 
     return {
         isGenerating,
         handleGenerateDesign,
+    }
+}
+
+
+export const useInspiration = () => {
+    const [isInspirationOpen, setIsInspirationOpen] = useState(false)
+
+    const toggleInspiration = () => {
+        setIsInspirationOpen(!isInspirationOpen)
+    }
+
+    const openInspiration = () => {
+        setIsInspirationOpen(true)
+    }
+
+    const closeInspiration = () => {
+        setIsInspirationOpen(false)
+    }
+
+    return {
+        isInspirationOpen,
+        toggleInspiration,
+        openInspiration,
+        closeInspiration,
     }
 }

@@ -86,23 +86,7 @@ export async function POST(request: NextRequest) {
         const imageUrls = images.map((img) => img.url).filter(Boolean)
 
         const systemPrompt = prompts.styleGuide.system
-
-        const userPrompt = `Analyze these ${imageUrls.length} mood board images and generate a complete design system.
-
-Generate exactly 5 color sections in this order:
-1. "Primary Colours" - exactly 4 swatches
-2. "Secondary & Accent Colors" - exactly 4 swatches
-3. "UI Component Colors" - exactly 6 swatches
-4. "Utility & Form Colors" - exactly 3 swatches
-5. "Status & Feedback Colors" - exactly 2 swatches
-
-Generate exactly 3 typography sections:
-1. "Headings" - with heading styles (H1, H2, H3)
-2. "Body Text" - with body styles (Regular, Small, Caption)
-3. "UI Elements" - with UI styles (Button, Label, Input)
-
-Extract colors that work harmoniously together and create typography that matches the aesthetic.
-Return ONLY the JSON object matching the exact schema structure.`
+        const userPrompt = prompts.styleGuide.user(imageUrls.length)
 
         const result = await generateObject({
             model: anthropic('claude-sonnet-4-6'),

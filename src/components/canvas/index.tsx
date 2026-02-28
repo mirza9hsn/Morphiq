@@ -1,5 +1,5 @@
 'use client'
-import { useInfiniteCanvas } from '@/hooks/use-canvas'
+import { useInfiniteCanvas, useInspiration } from '@/hooks/use-canvas'
 import React from 'react'
 import TextSidebar from './text-sidebar'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,7 @@ import { ArrowPreview } from './shapes/arrow/preview'
 import { LinePreview } from './shapes/line/preview'
 import { FreeDrawStrokePreview } from './shapes/stroke/preview'
 import { SelectionOverlay } from './shapes/selection'
+import InspirationSidebar from './shapes/inspiration-sidebar'
 
 
 type Props = {}
@@ -32,12 +33,14 @@ const InfiniteCanvas = (props: Props) => {
         hasSelectedText,
     } = useInfiniteCanvas()
 
+
+    const { isInspirationOpen, closeInspiration, toggleInspiration } = useInspiration()
     const draft = getDraftShape()
     const freeDrawPts = getFreeDrawPoints()
 
     return (<>
         <TextSidebar isOpen={isSidebarOpen && hasSelectedText} />
-        {/* Inspitartion */}
+        <InspirationSidebar isOpen={isInspirationOpen} onClose={closeInspiration} />
         {/* ChatWindow */}
 
         <div
@@ -75,7 +78,7 @@ const InfiniteCanvas = (props: Props) => {
                     <ShapeRenderer
                         key={shape.id}
                         shape={shape}
-                    // toggleInspiration={toggleInspiration}
+                        toggleInspiration={toggleInspiration}
                     // toggleChat={toggleChat}
                     // generateWorkflow={generateWorkflow}
                     // exportDesign={exportDesign}

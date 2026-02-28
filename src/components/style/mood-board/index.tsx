@@ -22,9 +22,13 @@ type Props = {
 const AddImageDialog = ({
     children,
     onImagesSelected,
+    currentCount,
+    maxCount,
 }: {
     children: React.ReactNode,
     onImagesSelected: (files: File[]) => void,
+    currentCount: number,
+    maxCount: number,
 }) => {
     const [open, setOpen] = React.useState(false)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -93,8 +97,7 @@ const AddImageDialog = ({
 
                     <div
                         className={cn(
-                            "group relative w-full border-[1.5px] border-dashed rounded-[20px] p-10 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer overflow-hidden",
-                            "border-white/10 bg-white/5 hover:border-[#4285f4]/50 hover:bg-[#4285f4]/5 hover:shadow-[0_0_30px_rgba(66,133,244,0.15)]"
+                            'border-[1.5px] border-dashed border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 rounded-lg p-8 text-center transition-all duration-200 cursor-pointer w-full'
                         )}
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
@@ -102,31 +105,23 @@ const AddImageDialog = ({
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
                     >
-                        {/* Glow effect matching Morphiq vibe */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#4285f4]/0 via-[#4285f4]/[0.02] to-[#4285f4]/[0.08] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
                         <input
+                            ref={fileInputRef}
                             type="file"
                             multiple
                             accept="image/*"
                             onChange={handleFileChange}
                             className="hidden"
-                            ref={fileInputRef}
                         />
-
-                        <div className="relative z-10 flex flex-col items-center gap-5">
-                            <div className="w-16 h-16 rounded-[18px] bg-[#4285f4]/15 border border-[#4285f4]/30 flex items-center justify-center text-[#4285f4] group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-300 shadow-inner">
-                                <ImageIcon className="w-8 h-8" strokeWidth={1.5} />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <p className="text-[16px] font-semibold text-white/80 group-hover:text-white transition-colors">
-                                    Click to upload or drag and drop
-                                </p>
-                                <p className="text-[13px] font-medium text-white/30">
-                                    SVG, PNG, JPG or GIF (max. 10MB)
-                                </p>
-                            </div>
+                        <div className="flex flex-col items-center gap-3">
+                            <Upload className="w-8 h-8 text-white/40" />
+                            <p className="text-sm text-white/60">
+                                Drop images here or <span className="text-blue-400">browse</span>
+                                <br />
+                                <span className="text-xs text-white/40">
+                                    {currentCount}/{maxCount} images uploaded
+                                </span>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -178,7 +173,7 @@ const MoodBoard = ({ guideImages }: Props) => {
 
                 {images.length === 0 && (
                     <div className="relative z-10 flex flex-col items-center justify-center">
-                        <AddImageDialog onImagesSelected={addImages}>
+                        <AddImageDialog onImagesSelected={addImages} currentCount={images.length} maxCount={5}>
                             <button
                                 className="flex flex-col items-center gap-4 cursor-pointer group hover:scale-105 transition-all duration-300 bg-transparent border-none"
                             >
@@ -288,7 +283,7 @@ const MoodBoard = ({ guideImages }: Props) => {
                         </Button>
 
                         {canAddMore && (
-                            <AddImageDialog onImagesSelected={addImages}>
+                            <AddImageDialog onImagesSelected={addImages} currentCount={images.length} maxCount={5}>
                                 <Button
                                     variant="secondary"
                                     className="bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl px-4 py-2 h-auto text-xs font-semibold backdrop-blur-sm cursor-pointer"

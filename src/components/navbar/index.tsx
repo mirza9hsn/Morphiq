@@ -70,6 +70,13 @@ const Navbar = () => {
                 >
                     <div className="w-4 h-4 rounded-full bg-white" />
                 </Link>
+                {project && (
+                    <div className="flex flex-col">
+                        <span className="text-lg font-semibold text-white/90">
+                            {project.name}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* CENTER: Tabs pill group */}

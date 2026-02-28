@@ -1,13 +1,15 @@
 "use client"
 
 import { useForm } from "react-hook-form"
-import { useState, useEffect, useCallback, RefObject } from "react"
+import { useState, useEffect, useCallback, RefObject, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { toast } from "sonner"
 import { Id } from "../../convex/_generated/dataModel"
 import { useGenerateStyleGuideMutation } from "@/redux/api/style-guide"
+import { GeneratedUIShape, updateShape } from "@/redux/slice/shapes"
+import { useAppDispatch } from "@/redux/store"
 
 export interface MoodBoardImage {
     id: string
@@ -192,30 +194,27 @@ export const useMoodBoard = (guideImages: MoodBoardImage[]) => {
     }
 
     const clearAll = useCallback(async () => {
-        const currentImages = getValues('images')
-        if (currentImages.length === 0) return
-
-        // 1. Revoke local URLs
-        currentImages.forEach(img => {
-            if (!img.isFromServer && img.preview.startsWith('blob:')) {
-                URL.revokeObjectURL(img.preview)
-            }
-        })
-
-        // 2. Clear state immediately for UI responsiveness
-        setValue('images', [])
-
-        // 3. Atomic server cleanup
+        // Clear from server - remove all images using atomic mutation
         if (projectId) {
             try {
                 await clearMoodBoard({
                     projectId: projectId as Id<'projects'>
                 })
             } catch (error) {
-                console.error('Failed to clear mood board:', error)
+                console.error('Failed to clear mood board from server:', error)
                 toast.error('Failed to clear mood board on server')
+                return
             }
         }
+
+        // Clear local state
+        const currentImages = getValues('images')
+        currentImages.forEach(img => {
+            if (!img.isFromServer && img.preview.startsWith('blob:')) {
+                URL.revokeObjectURL(img.preview)
+            }
+        })
+        setValue('images', [])
         toast.success('Mood board cleared')
     }, [getValues, setValue, projectId, clearMoodBoard])
 
@@ -449,5 +448,46 @@ export const useStyleGuide = (
         handleGenerateStyleGuide,
         isGenerating,
         handleUploadClick,
+    }
+}
+
+
+export const useUpdateContainer = (shape: GeneratedUIShape) => {
+    const dispatch = useAppDispatch()
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (containerRef.current && shape.uiSpecData) {
+            const timeoutId = setTimeout(() => {
+                const actualHeight = containerRef.current?.offsetHeight || 0
+                if (actualHeight > 0 && Math.abs(actualHeight - shape.h) > 10) {
+                    dispatch(
+                        updateShape({
+                            id: shape.id,
+                            patch: { h: actualHeight },
+                        })
+                    )
+                }
+            }, 100)
+
+            return () => clearTimeout(timeoutId)
+        }
+    }, [shape.uiSpecData, shape.id, shape.h, dispatch])
+
+    // Enhanced HTML sanitization function for basic safety
+    const sanitizeHtml = (html: string) => {
+        const sanitized = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+            .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers
+            .replace(/javascript:/gi, '') // Remove javascript: protocols
+            .replace(/data:/gi, '') // Remove data: protocols for safety
+
+        return sanitized
+    }
+
+    return {
+        containerRef,
+        sanitizeHtml
     }
 }
