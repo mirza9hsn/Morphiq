@@ -1,3 +1,17 @@
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
+import { Id } from "../../../../convex/_generated/dataModel"
+
+
+export interface GenerateStyleGuideRequest {
+    projectId: Id<'projects'>
+}
+
+export interface GenerateStyleGuideResponse {
+    success: boolean
+    message?: string
+    styleGuide: StyleGuide
+}
+
 export interface TypographyStyle {
     name: string
     fontFamily: string
@@ -41,3 +55,30 @@ export interface ColorSwatch {
     hexColor: string
     description?: string
 }
+
+
+export const styleGuideApi = createApi({
+    reducerPath: 'styleGuideApi',
+    baseQuery: fetchBaseQuery({
+        baseUrl: '/api/generate',
+    }),
+    tagTypes: ['StyleGuide'],
+    endpoints: (builder) => ({
+        generateStyleGuide: builder.mutation<
+            GenerateStyleGuideResponse,
+            GenerateStyleGuideRequest
+        >({
+            query: ({ projectId }) => ({
+                url: '/style',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: { projectId },
+            }),
+            invalidatesTags: ['StyleGuide'],
+        }),
+    }),
+})
+
+export const { useGenerateStyleGuideMutation } = styleGuideApi

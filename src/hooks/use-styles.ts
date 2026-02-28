@@ -1,12 +1,13 @@
 "use client"
 
 import { useForm } from "react-hook-form"
-import { useState, useEffect, useCallback } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect, useCallback, RefObject } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { toast } from "sonner"
 import { Id } from "../../convex/_generated/dataModel"
+import { useGenerateStyleGuideMutation } from "@/redux/api/style-guide"
 
 export interface MoodBoardImage {
     id: string
@@ -256,6 +257,53 @@ export const useMoodBoard = (guideImages: MoodBoardImage[]) => {
     }
 
 
+    const addImageFromUrl = async (url: string) => {
+        try {
+            const currentImages = getValues('images')
+            const remainingSlots = 5 - currentImages.length
+
+            if (remainingSlots <= 0) {
+                toast.error('Maximum 5 images allowed')
+                return false
+            }
+
+            const toastId = toast.loading('Fetching image...')
+
+            const response = await fetch('/api/image-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url }),
+            })
+
+            if (!response.ok) {
+                let errorMsg = 'Failed to fetch image from URL'
+                try {
+                    const errorData = await response.json()
+                    if (errorData.error) errorMsg = errorData.error
+                } catch (e) { }
+                toast.error(errorMsg, { id: toastId })
+                return false
+            }
+
+            const blob = await response.blob()
+            const contentType = response.headers.get('content-type') || 'image/jpeg'
+
+            let extension = contentType.split('/')[1] || 'jpg'
+            if (extension === 'jpeg') extension = 'jpg'
+
+            const fileName = `pasted-image-${Date.now()}.${extension}`
+            const file = new File([blob], fileName, { type: contentType })
+
+            toast.success('Image fetched successfully', { id: toastId })
+            addImages([file])
+            return true
+        } catch (error) {
+            console.error('Error fetching image from URL:', error)
+            toast.error('Failed to fetch image from URL')
+            return false
+        }
+    }
+
     useEffect(() => {
         const uploadPendingImages = async () => {
             const currentImages = getValues('images')
@@ -331,11 +379,75 @@ export const useMoodBoard = (guideImages: MoodBoardImage[]) => {
         images,
         dragActive,
         addImages,
+        addImageFromUrl,
         removeImage,
         clearAll,
         handleDrag,
         handleDrop,
         handleFileInput,
         canAddMore: images.length < 5,
+    }
+}
+
+export const useStyleGuide = (
+    projectId: string,
+    images: MoodBoardImage[],
+    fileInputRef: RefObject<HTMLInputElement | null>
+) => {
+
+    const [generateStyleGuide, { isLoading: isGenerating }] =
+        useGenerateStyleGuideMutation()
+    const router = useRouter()
+    const handleUploadClick = () => fileInputRef.current?.click()
+
+    const handleGenerateStyleGuide = async () => {
+        if (!projectId) {
+            toast.error('No project selected')
+            return
+        }
+
+        if (images.length === 0) {
+            toast.error('Please upload at least one image to generate a style guide')
+            return
+        }
+
+        if (images.some((img) => img.uploading)) {
+            toast.error('Please wait for all images to finish uploading')
+            return
+        }
+        try {
+            toast.loading('Analyzing mood board images...', {
+                id: 'style-guide-generation',
+            })
+
+            const result = await generateStyleGuide({ projectId: projectId as Id<'projects'> }).unwrap()
+
+            if (!result.success) {
+                toast.error(result.message, { id: 'style-guide-generation' })
+                return
+            }
+
+            router.refresh()
+            toast.success('Style guide generated successfully!', {
+                id: 'style-guide-generation',
+            })
+            setTimeout(() => {
+                toast.success(
+                    'Style guide generated! Switch to the Colours tab to see the results.',
+                    { duration: 5000 }
+                )
+            }, 1000)
+        } catch (error) {
+            const errorMessage =
+                error && typeof error === 'object' && 'error' in error
+                    ? (error as { error: string }).error
+                    : 'Failed to generate style guide'
+            toast.error(errorMessage, { id: 'style-guide-generation' })
+        }
+    }
+    return {
+        handleGenerateStyleGuide,
+        isGenerating,
+        handleUploadClick,
     }
 }

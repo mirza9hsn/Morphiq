@@ -1,5 +1,12 @@
-import { Type } from "lucide-react"
+import { Info, Type } from "lucide-react"
 import React from 'react'
+
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type Props = {
     typographyGuide: any
@@ -19,31 +26,51 @@ const StyleGuideTypography = ({ typographyGuide }: Props) => {
                     </p>
                 </div>
             ) : (
-                <div className="flex flex-col gap-10">
+                <div className="flex flex-col gap-16 py-4">
                     {typographyGuide.map((section: any, index: number) => (
                         <div
                             key={index}
-                            className="flex flex-col gap-5"
+                            className="flex flex-col gap-8"
                         >
                             <div>
-                                <h3 className="text-lg font-medium text-foreground/50">
+                                <h3 className="text-[13px] font-medium text-foreground/40 border-b border-white/5 pb-3">
                                     {section.title}
                                 </h3>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="flex flex-col gap-10">
                                 {section.styles?.map((style: any, styleIndex: number) => (
                                     <div
                                         key={styleIndex}
-                                        className="p-6 rounded-2xl backdrop-blur-xl bg-white/[0.02] border saturate-150"
+                                        className="flex flex-col gap-4"
                                     >
-                                        <div className="space-y-4">
-                                            <h4 className="text-lg font-medium text-foreground mb-1">
+                                        <div className="space-y-1">
+                                            <h4 className="text-[13px] font-bold text-foreground">
                                                 {style.name}
                                             </h4>
                                             {style.description && (
-                                                <p className="text-sm text-muted-foreground">
-                                                    {style.description}
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[11px] text-muted-foreground/60">
+                                                        {style.description}
+                                                    </p>
+                                                    <TooltipProvider delayDuration={100}>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Info className="w-3.5 h-3.5 text-muted-foreground/40 hover:text-foreground cursor-pointer transition-colors" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="right" align="center" className="bg-[#1c1c1c] border-white/10 text-white p-3 shadow-xl">
+                                                                <div className="text-xs space-y-1.5 opacity-80 font-medium">
+                                                                    <div><span className="font-semibold opacity-100">Font:</span> {style.fontFamily}</div>
+                                                                    <div><span className="font-semibold opacity-100">Size:</span> {style.fontSize}</div>
+                                                                    <div><span className="font-semibold opacity-100">Weight:</span> {style.fontWeight}</div>
+                                                                    <div><span className="font-semibold opacity-100">Line Height:</span> {style.lineHeight}</div>
+                                                                    {style.letterSpacing && (
+                                                                        <div><span className="font-semibold opacity-100">Letter Spacing:</span> {style.letterSpacing}</div>
+                                                                    )}
+                                                                </div>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
                                             )}
                                         </div>
 
@@ -59,15 +86,6 @@ const StyleGuideTypography = ({ typographyGuide }: Props) => {
                                         >
                                             The quick brown fox jumps over the lazy dog
                                         </div>
-                                        <div className="text-xs text-muted-foreground space-y-1">
-                                            <div>Font: {style.fontFamily}</div>
-                                            <div>Size: {style.fontSize}</div>
-                                            <div>Weight: {style.fontWeight}</div>
-                                            <div>Line Height: {style.lineHeight}</div>
-                                            {style.letterSpacing && (
-                                                <div>Letter Spacing: {style.letterSpacing}</div>
-                                            )}
-                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -78,4 +96,5 @@ const StyleGuideTypography = ({ typographyGuide }: Props) => {
         </>
     )
 }
+
 export default StyleGuideTypography

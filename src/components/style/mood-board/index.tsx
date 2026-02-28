@@ -6,16 +6,141 @@ import { cn } from "@/lib/utils"
 import Image from "next/image"
 import ImagesBoard from "./images.board"
 import { Button } from "@/components/ui/button"
-import { Plus, Sparkles, Upload, Trash2 } from "lucide-react"
-
+import { Plus, Sparkles, Upload, Trash2, ImageIcon } from "lucide-react"
+import {
+    Dialog,
+    DialogContent,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { useRef } from "react"
+import { useSearchParams } from "next/navigation"
+import GenerateStyleGuideButton from "@/components/buttons/style-guide"
 type Props = {
     guideImages: MoodBoardImage[]
+}
+
+const AddImageDialog = ({
+    children,
+    onImagesSelected,
+}: {
+    children: React.ReactNode,
+    onImagesSelected: (files: File[]) => void,
+}) => {
+    const [open, setOpen] = React.useState(false)
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || [])
+        if (files.length > 0) {
+            onImagesSelected(files)
+            setOpen(false)
+        }
+        e.target.value = ''
+    }
+
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const files = Array.from(e.dataTransfer.files)
+        const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+        if (imageFiles.length > 0) {
+            onImagesSelected(imageFiles)
+            setOpen(false)
+        }
+    }
+
+    // handleUrlSubmit removed
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        const files: File[] = [];
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile();
+                if (file) files.push(file);
+            }
+        }
+
+        if (files.length > 0) {
+            e.preventDefault();
+            onImagesSelected(files);
+            setOpen(false);
+        }
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                {children}
+            </DialogTrigger>
+            <DialogContent
+                className="max-w-md bg-gradient-to-br from-[#242424] to-[#1a1a1a] border border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] text-white p-0 overflow-hidden sm:rounded-[24px]"
+                showCloseButton={true}
+                onPaste={handlePaste}
+            >
+                <div className="p-10 flex flex-col items-center">
+                    <div className="mb-6 text-center space-y-2">
+                        <h2 className="text-2xl font-bold tracking-tight text-white/90">Add Images</h2>
+                        <p className="text-[15px] font-medium text-white/40">Upload files, drag & drop, or paste directly.</p>
+                    </div>
+
+                    <div
+                        className={cn(
+                            "group relative w-full border-[1.5px] border-dashed rounded-[20px] p-10 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer overflow-hidden",
+                            "border-white/10 bg-white/5 hover:border-[#4285f4]/50 hover:bg-[#4285f4]/5 hover:shadow-[0_0_30px_rgba(66,133,244,0.15)]"
+                        )}
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        {/* Glow effect matching Morphiq vibe */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#4285f4]/0 via-[#4285f4]/[0.02] to-[#4285f4]/[0.08] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                        <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="hidden"
+                            ref={fileInputRef}
+                        />
+
+                        <div className="relative z-10 flex flex-col items-center gap-5">
+                            <div className="w-16 h-16 rounded-[18px] bg-[#4285f4]/15 border border-[#4285f4]/30 flex items-center justify-center text-[#4285f4] group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-300 shadow-inner">
+                                <ImageIcon className="w-8 h-8" strokeWidth={1.5} />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <p className="text-[16px] font-semibold text-white/80 group-hover:text-white transition-colors">
+                                    Click to upload or drag and drop
+                                </p>
+                                <p className="text-[13px] font-medium text-white/30">
+                                    SVG, PNG, JPG or GIF (max. 10MB)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
 }
 
 const MoodBoard = ({ guideImages }: Props) => {
     const {
         images,
         dragActive,
+        addImages,
+        addImageFromUrl,
         removeImage,
         clearAll,
         handleDrag,
@@ -23,6 +148,15 @@ const MoodBoard = ({ guideImages }: Props) => {
         handleFileInput,
         canAddMore,
     } = useMoodBoard(guideImages)
+
+
+    const searchParams = useSearchParams()
+    const projectId = searchParams.get('project')
+
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const handleUploadClick = () => {
+        fileInputRef.current?.click()
+    }
 
     return (
         <div className="flex flex-col gap-6 relative">
@@ -44,25 +178,18 @@ const MoodBoard = ({ guideImages }: Props) => {
 
                 {images.length === 0 && (
                     <div className="relative z-10 flex flex-col items-center justify-center">
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={handleFileInput}
-                            className="hidden"
-                            id="mood-board-upload-empty"
-                        />
-                        <label
-                            htmlFor="mood-board-upload-empty"
-                            className="flex flex-col items-center gap-4 cursor-pointer group hover:scale-105 transition-all duration-300"
-                        >
-                            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-white/20 group-hover:bg-white/10 transition-all">
-                                <Plus className="w-8 h-8 text-white/20 group-hover:text-white/40 transition-colors" />
-                            </div>
-                            <p className="text-white/40 font-medium group-hover:text-white/60 transition-colors">
-                                Drag and drop images here, or use the buttons below
-                            </p>
-                        </label>
+                        <AddImageDialog onImagesSelected={addImages}>
+                            <button
+                                className="flex flex-col items-center gap-4 cursor-pointer group hover:scale-105 transition-all duration-300 bg-transparent border-none"
+                            >
+                                <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-white/20 group-hover:bg-white/10 transition-all">
+                                    <Plus className="w-8 h-8 text-white/20 group-hover:text-white/40 transition-colors" />
+                                </div>
+                                <p className="text-white/40 font-medium group-hover:text-white/60 transition-colors">
+                                    Click or drop to add images
+                                </p>
+                            </button>
+                        </AddImageDialog>
                     </div>
                 )}
 
@@ -161,26 +288,15 @@ const MoodBoard = ({ guideImages }: Props) => {
                         </Button>
 
                         {canAddMore && (
-                            <div>
-                                <input
-                                    type="file"
-                                    multiple
-                                    accept="image/*"
-                                    onChange={handleFileInput}
-                                    className="hidden"
-                                    id="mood-board-upload-add-more"
-                                />
+                            <AddImageDialog onImagesSelected={addImages}>
                                 <Button
-                                    asChild
                                     variant="secondary"
-                                    className="bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl px-4 py-2 h-auto text-xs font-semibold backdrop-blur-sm"
+                                    className="bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl px-4 py-2 h-auto text-xs font-semibold backdrop-blur-sm cursor-pointer"
                                 >
-                                    <label htmlFor="mood-board-upload-add-more" className="cursor-pointer flex items-center gap-2">
-                                        <Upload className="w-3 h-3" />
-                                        Add More
-                                    </label>
+                                    <Upload className="w-3 h-3 mr-2" />
+                                    Add More
                                 </Button>
-                            </div>
+                            </AddImageDialog>
                         )}
                     </div>
                 )}
@@ -188,10 +304,12 @@ const MoodBoard = ({ guideImages }: Props) => {
 
             {/* Bottom Left: Generate Button */}
             <div className="flex items-center justify-between w-full px-2">
-                <Button className="bg-white text-black hover:bg-white/90 rounded-xl px-4 py-2 h-auto text-xs font-bold shadow-lg">
-                    <Sparkles className="w-3 h-3 mr-2" />
-                    Generate With AI
-                </Button>
+
+                <GenerateStyleGuideButton
+                    images={images}
+                    fileInputRef={fileInputRef}
+                    projectId={projectId ?? ''}
+                />
 
                 {!canAddMore && (
                     <div className="bg-white/5 border border-white/5 rounded-full px-4 py-1.5">

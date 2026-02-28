@@ -155,4 +155,32 @@ export const updateProjectSketches = mutation({
         console.log('✅ [Convex] Project auto-saved successfully')
         return { success: true }
     }
-})  
+})
+
+
+export const updateProjectStyleGuide = mutation({
+    args: {
+        projectId: v.id('projects'),
+        styleGuideData: v.any(),
+    },
+
+    handler: async (ctx, { projectId, styleGuideData }) => {
+        console.log('🎨 [Convex] Updating project style guide:', projectId)
+        const userId = await getAuthUserId(ctx)
+        if (!userId) throw new Error('Not authenticated')
+
+        const project = await ctx.db.get(projectId)
+        if (!project) throw new Error('Project not found')
+        if (project.userId !== userId) {
+            throw new Error('Access denied')
+        }
+
+        await ctx.db.patch(projectId, {
+            styleGuide: JSON.stringify(styleGuideData), // Store as JSON string
+            lastModified: Date.now(),
+        })
+
+        console.log('✅ [Convex] Project style guide updated successfully')
+        return { success: true, styleGuide: styleGuideData }
+    },
+})
