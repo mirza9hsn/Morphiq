@@ -4,10 +4,12 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { AppDispatch, useAppDispatch, useAppSelector } from "@/redux/store"
 import { addArrow, addEllipse, addFrame, addLine, addRect, addText, clearSelection, removeShape, selectShape, setTool, Shape, updateShape, addFreeDrawShape, Tool, FrameShape, addGeneratedUI } from "@/redux/slice/shapes"
 import { panMove, wheelZoom, wheelPan, panStart, handToolEnable, panEnd } from "@/redux/slice/viewport"
-import { downloadBlob, generateFrameSnapshot } from "@/lib/frame-snapshot"
+import { downloadBlob, exportGeneratedUIAsPNG, generateFrameSnapshot } from "@/lib/frame-snapshot"
 import { nanoid } from "@reduxjs/toolkit"
 import { toast } from "sonner"
 import { useGenerateWorkflowMutation } from "@/redux/api/generation"
+import { addErrorMessage, addUserMessage, clearChat, finishStreamingResponse, initializeChat, startStreamingResponse, updateStreamingContent } from "@/redux/slice/chat"
+
 
 
 
@@ -1166,10 +1168,248 @@ export const useGlobalChat = () => {
         null
     )
     const { generateWorkflow } = useWorkflowGeneration()
+    const exportDesign = async (
+        generatedUIId: string,
+        element: HTMLElement | null
+    ) => {
+        if (!element) {
+            console.warn('❌ No element to export for shape:', generatedUIId)
+            toast.error('No design element found for export.')
+            return
+        }
+
+        try {
+            const filename = `generated-ui-${generatedUIId.slice(0, 8)}.png`
+            console.log('📸 Starting snapshot export:', { filename })
+
+            await exportGeneratedUIAsPNG(element, filename)
+
+            toast.success('Design exported successfully!')
+        } catch (error) {
+            console.error('❌ Failed to export GeneratedUI:', error)
+            toast.error('Failed to export design. Please try again.')
+        }
+    }
+
+    const closeChat = () => {
+        setIsChatOpen(false)
+        setActiveGeneratedUIId(null)
+    }
+
+    const openChat = (generatedUIId: string) => {
+        setIsChatOpen(true)
+        setActiveGeneratedUIId(generatedUIId)
+    }
+
+    const toggleChat = (generatedUIId: string) => {
+        if (isChatOpen && activeGeneratedUIId === generatedUIId) {
+            closeChat()
+        } else {
+            openChat(generatedUIId)
+        }
+    }
 
     return {
         isChatOpen,
         activeGeneratedUIId,
+        openChat,
+        closeChat,
+        toggleChat,
         generateWorkflow,
+        exportDesign,
+    }
+}
+
+export const useChatWindow = (generatedUIId: string, isOpen: boolean) => {
+    const [inputValue, setInputValue] = useState('')
+    const scrollAreaRef = useRef<HTMLDivElement>(null)
+    const inputRef = useRef<HTMLInputElement>(null)
+    const dispatch = useAppDispatch()
+    const chatState = useAppSelector((state) => state.chat.chats[generatedUIId])
+    const currentShape = useAppSelector(
+        (state) => state.shapes.shapes.entities[generatedUIId]
+    )
+
+    const allShapes = useAppSelector((state) => state.shapes.shapes.entities)
+
+    const getSourceFrame = (): FrameShape | null => {
+        if (!currentShape || currentShape.type !== 'generatedui') {
+            return null
+        }
+
+        const sourceFrameId = currentShape.sourceFrameId
+        if (!sourceFrameId) {
+            return null
+        }
+
+        const sourceFrame = allShapes[sourceFrameId]
+        if (!sourceFrame || sourceFrame.type !== 'frame') {
+            return null
+        }
+
+        return sourceFrame as FrameShape
+    }
+
+    useEffect(() => {
+        if (isOpen) {
+            dispatch(initializeChat(generatedUIId))
+        }
+    }, [dispatch, generatedUIId, isOpen])
+
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+        }
+    }, [chatState?.messages])
+
+    useEffect(() => {
+        if (isOpen && inputRef.current) {
+            setTimeout(() => inputRef.current?.focus(), 100)
+        }
+    }, [isOpen])
+
+    const handleSendMessage = async () => {
+        if (!inputValue.trim() || chatState?.isStreaming) return
+
+        const message = inputValue.trim()
+        setInputValue('')
+
+        try {
+            dispatch(addUserMessage({ generatedUIId, content: message }))
+            const responseId = `response-${Date.now()}`
+            dispatch(startStreamingResponse({ generatedUIId, messageId: responseId }))
+
+            const isWorkflowPage = currentShape?.type === 'generatedui' && currentShape.isWorkflowPage
+            const urlParams = new URLSearchParams(window.location.search)
+            const projectId = urlParams.get('project')
+
+            if (!projectId) {
+                throw new Error('Project ID not found in URL')
+            }
+
+            const baseRequestData = {
+                userMessage: message,
+                generatedUIId: generatedUIId,
+                currentHTML:
+                    currentShape?.type === 'generatedui' ? currentShape.uiSpecData : null,
+                projectId: projectId, // Pass projectId in body
+            }
+
+            let apiEndpoint = '/api/generate/redesign'
+            let wireframeSnapshot: string | null = null
+
+            if (isWorkflowPage) {
+                apiEndpoint = '/api/generate/workflow-redesign'
+            } else {
+                const sourceFrame = getSourceFrame()
+                if (sourceFrame && sourceFrame.type === 'frame') {
+                    try {
+                        const allShapesArray = Object.values(allShapes).filter(
+                            Boolean
+                        ) as Shape[]
+
+                        const snapshot = await generateFrameSnapshot(
+                            sourceFrame,
+                            allShapesArray
+                        )
+                        const arrayBuffer = await snapshot.arrayBuffer()
+                        const base64 = btoa(
+                            String.fromCharCode(...new Uint8Array(arrayBuffer))
+                        )
+                        wireframeSnapshot = base64
+                    } catch (error) {
+                        console.warn(
+                            '⚠️ Failed to capture source wireframe snapshot:',
+                            error
+                        )
+                    }
+                } else {
+                    console.warn('⚠️ No source frame available for wireframe snapshot')
+                }
+            }
+            const requestData = isWorkflowPage
+                ? baseRequestData
+                : { ...baseRequestData, wireframeSnapshot }
+
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData),
+            })
+
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status}`)
+            }
+
+            const reader = response.body?.getReader()
+            const decoder = new TextDecoder()
+            let accumulatedHTML = ''
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read()
+                    if (done) break
+
+                    const chunk = decoder.decode(value)
+                    accumulatedHTML += chunk
+
+                    // Update streaming message with "Regenerating design..."
+                    dispatch(
+                        updateStreamingContent({
+                            generatedUIId,
+                            messageId: responseId,
+                            content: 'Regenerating your design...',
+                        })
+                    )
+
+                    // Update the GeneratedUI shape with new HTML in real-time
+                    dispatch(
+                        updateShape({
+                            id: generatedUIId,
+                            patch: { uiSpecData: accumulatedHTML },
+                        })
+                    )
+                }
+            }
+
+            dispatch(
+                finishStreamingResponse({
+                    generatedUIId,
+                    messageId: responseId,
+                    finalContent: '✨ Design regenerated successfully!',
+                })
+            )
+
+        } catch (error) {
+            console.error('Chat error:', error)
+            dispatch(
+                addErrorMessage({
+                    generatedUIId,
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                })
+            )
+            toast.error('Failed to regenerate design')
+        }
+    }
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            handleSendMessage()
+        }
+    }
+
+    const handleClearChat = () => {
+        dispatch(clearChat(generatedUIId))
+    }
+
+    return {
+        inputValue,
+        setInputValue,
+        scrollAreaRef,
+        inputRef,
+        handleSendMessage,
+        handleKeyPress,
+        handleClearChat,
+        chatState,
     }
 }
