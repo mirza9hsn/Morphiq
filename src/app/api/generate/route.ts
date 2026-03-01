@@ -45,15 +45,6 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const { ok } = await ConsumeCreditsQuery({ amount: 1 })
-
-        if (!ok) {
-            return NextResponse.json(
-                { error: 'no credits available' },
-                { status: 400 }
-            )
-        }
-
         const imageBuffer = await imageFile.arrayBuffer()
         const base64Image = Buffer.from(imageBuffer).toString('base64')
         const styleGuide = await StyleGuideQuery(projectId)
@@ -116,6 +107,11 @@ export async function POST(request: NextRequest) {
                         // Stream the HTML markup text
                         const encoder = new TextEncoder()
                         controller.enqueue(encoder.encode(chunk))
+                    }
+
+                    // Consume credits after successful generation
+                    if (accumulatedContent.length > 0) {
+                        await ConsumeCreditsQuery({ amount: 1 })
                     }
 
                     controller.close()

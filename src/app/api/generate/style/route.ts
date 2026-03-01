@@ -109,13 +109,6 @@ export async function POST(request: NextRequest) {
             ],
         })
 
-        const { ok, balance } = await ConsumeCreditsQuery({ amount: 1 })
-        if (!ok) {
-            return NextResponse.json(
-                { error: 'Failed to generate style guide' },
-                { status: 500 }
-            )
-        }
 
         await fetchMutation(
             api.projects.updateProjectStyleGuide,
@@ -125,6 +118,11 @@ export async function POST(request: NextRequest) {
             },
             { token: await convexAuthNextjsToken() }
         )
+
+        const { ok, balance } = await ConsumeCreditsQuery({ amount: 1 })
+        if (!ok) {
+            console.error('Failed to consume credits after successful style guide generation')
+        }
 
         return NextResponse.json({
             success: true,

@@ -36,15 +36,6 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Consume credits
-        const { ok } = await ConsumeCreditsQuery({ amount: 4 })
-        if (!ok) {
-            return NextResponse.json(
-                { error: 'Failed to consume credits' },
-                { status: 500 }
-            )
-        }
-
         console.log(currentHTML, 'currentHTML')
 
         const styleGuide = await StyleGuideQuery(projectId)
@@ -82,9 +73,15 @@ export async function POST(request: NextRequest) {
         const stream = new ReadableStream({
             async start(controller) {
                 try {
+                    let hasContent = false
                     for await (const chunk of result.textStream) {
+                        hasContent = true
                         const encoder = new TextEncoder()
                         controller.enqueue(encoder.encode(chunk))
+                    }
+
+                    if (hasContent) {
+                        await ConsumeCreditsQuery({ amount: 4 })
                     }
                     controller.close()
                 } catch (error) {

@@ -1,12 +1,15 @@
 import { cn } from '@/lib/utils'
 import { ImageIcon, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
-import { Label } from '@radix-ui/react-dropdown-menu'
+import { Label } from '@/components/ui/label'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../../../../convex/_generated/api'
 import { useSearchParams } from 'next/navigation'
 import { Id } from '../../../../../convex/_generated/dataModel'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+
+
 
 type InspirationSidebarProps = {
     isOpen: boolean
@@ -30,7 +33,9 @@ const InspirationSidebar = ({ isOpen, onClose }: InspirationSidebarProps) => {
 
     const [images, setImages] = useState<Props[]>([]);
     const [dragActive, setDragActive] = useState(false);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
     const searchParams = useSearchParams();
     const projectId = searchParams.get('project');
     const generateUploadUrl = useMutation(api.inspiration.generateUploadUrl)
@@ -304,7 +309,8 @@ const InspirationSidebar = ({ isOpen, onClose }: InspirationSidebarProps) => {
                         {images.map((image) => (
                             <div
                                 key={image.id}
-                                className="relative group aspect-square rounded-lg overflow-hidden border border-white/10 bg-white/5"
+                                className="relative group aspect-square rounded-lg overflow-hidden border border-white/10 bg-white/5 cursor-zoom-in"
+                                onClick={() => image.url && setPreviewImage(image.url)}
                             >
                                 <img
                                     src={image.url || ''}
@@ -313,6 +319,7 @@ const InspirationSidebar = ({ isOpen, onClose }: InspirationSidebarProps) => {
                                     width={100}
                                     height={100}
                                 />
+
 
                                 {image.uploading && (
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -353,7 +360,32 @@ const InspirationSidebar = ({ isOpen, onClose }: InspirationSidebarProps) => {
                     </div>
                 </div>
             )}
+
+            <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+                <DialogContent
+                    className="max-w-[90vw] lg:max-w-[70vw] w-fit p-0 overflow-hidden bg-transparent border-none shadow-none flex justify-center items-center"
+                    showCloseButton={false}
+                >
+                    <DialogTitle className="sr-only">Image Preview</DialogTitle>
+                    <div className="relative group/preview inline-flex items-center justify-center">
+                        {previewImage && (
+                            <img
+                                src={previewImage}
+                                alt="Preview fullscreen"
+                                className="max-h-[85vh] w-auto max-w-full object-contain rounded-lg shadow-2xl"
+                            />
+                        )}
+                        <button
+                            onClick={() => setPreviewImage(null)}
+                            className="absolute top-4 right-4 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity z-20 backdrop-blur-sm"
+                        >
+                            <X className="w-4 h-4 text-white" />
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div >
+
     )
 }
 
