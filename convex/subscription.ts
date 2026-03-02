@@ -13,21 +13,20 @@ export const hasEntitlement = query({
             .query('subscriptions')
             .withIndex('by_userId', (q) => q.eq('userId', userId))) {
             const status = String(sub.status || '').toLowerCase()
-            const periodOk =
-                sub.currentPeriodEnd == null || sub.currentPeriodEnd > now
+            const periodOk = sub.currentPeriodEnd == null || sub.currentPeriodEnd > now
             if (status === 'active' && periodOk) return true
         }
         return false
     },
 })
 
-export const getByPolarId = query({
-    args: { polarSubscriptionId: v.string() },
-    handler: async (ctx, { polarSubscriptionId }) => {
+export const getByStripeId = query({
+    args: { stripeSubscriptionId: v.string() },
+    handler: async (ctx, { stripeSubscriptionId }) => {
         return await ctx.db
             .query('subscriptions')
-            .withIndex('by_polarSubscriptionId', (q) =>
-                q.eq('polarSubscriptionId', polarSubscriptionId)
+            .withIndex('by_stripeSubscriptionId', (q) =>
+                q.eq('stripeSubscriptionId', stripeSubscriptionId)
             )
             .first()
     },
@@ -56,8 +55,8 @@ export const getAllForUser = query({
 export const upsertSubscription = mutation({
     args: {
         userId: v.id('users'),
-        polarCustomerId: v.string(),
-        polarSubscriptionId: v.string(),
+        stripeCustomerId: v.string(),
+        stripeSubscriptionId: v.string(),
         productId: v.optional(v.string()),
         priceId: v.optional(v.string()),
         planCode: v.optional(v.string()),
@@ -72,16 +71,10 @@ export const upsertSubscription = mutation({
         creditsRolloverLimit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
-        console.log('🔍 [Convex] Starting upsertFromPolar for:', {
-            userId: args.userId,
-            polarSubscriptionId: args.polarSubscriptionId,
-            status: args.status,
-        })
-
-        const existingByPolar = await ctx.db
+        const existingByStripe = await ctx.db
             .query('subscriptions')
-            .withIndex('by_polarSubscriptionId', (q) =>
-                q.eq('polarSubscriptionId', args.polarSubscriptionId)
+            .withIndex('by_stripeSubscriptionId', (q) =>
+                q.eq('stripeSubscriptionId', args.stripeSubscriptionId)
             )
             .first()
 
@@ -92,8 +85,8 @@ export const upsertSubscription = mutation({
 
         const base = {
             userId: args.userId,
-            polarCustomerId: args.polarCustomerId,
-            polarSubscriptionId: args.polarSubscriptionId,
+            stripeCustomerId: args.stripeCustomerId,
+            stripeSubscriptionId: args.stripeSubscriptionId,
             productId: args.productId,
             priceId: args.priceId,
             planCode: args.planCode,
@@ -106,47 +99,23 @@ export const upsertSubscription = mutation({
             metadata: args.metadata,
             creditsGrantPerPeriod:
                 args.creditsGrantPerPeriod ??
-                existingByPolar?.creditsGrantPerPeriod ??
+                existingByStripe?.creditsGrantPerPeriod ??
                 existingByUser?.creditsGrantPerPeriod ??
                 DEFAULT_GRANT,
             creditsRolloverLimit:
                 args.creditsRolloverLimit ??
-                existingByPolar?.creditsRolloverLimit ??
+                existingByStripe?.creditsRolloverLimit ??
                 existingByUser?.creditsRolloverLimit ??
                 DEFAULT_ROLLOVER_LIMIT,
         }
 
-        if (existingByPolar) {
-            if (existingByPolar.userId === args.userId) {
-                await ctx.db.patch(existingByPolar._id, base)
-                return existingByPolar._id
-            } else {
-                const userExistingSubscription = await ctx.db
-                    .query('subscriptions')
-                    .withIndex('by_userId', (q) => q.eq('userId', args.userId))
-                    .first()
-
-                if (userExistingSubscription) {
-                    const preservedData = {
-                        creditsBalance: userExistingSubscription.creditsBalance,
-                        lastGrantCursor: userExistingSubscription.lastGrantCursor,
-                    }
-
-                    await ctx.db.patch(userExistingSubscription._id, {
-                        ...base,
-                        ...preservedData,
-                    })
-                    return userExistingSubscription._id
-                } else {
-                    const newId = await ctx.db.insert('subscriptions', {
-                        ...base,
-                        creditsBalance: 0,
-                        lastGrantCursor: undefined,
-                    })
-                    console.log('Created new subscription for user:', newId)
-                    return newId
-                }
+        if (existingByStripe) {
+            const preservedData = {
+                creditsBalance: existingByStripe.creditsBalance,
+                lastGrantCursor: existingByStripe.lastGrantCursor,
             }
+            await ctx.db.patch(existingByStripe._id, { ...base, ...preservedData })
+            return existingByStripe._id
         }
 
         if (existingByUser) {
@@ -154,7 +123,6 @@ export const upsertSubscription = mutation({
                 creditsBalance: existingByUser.creditsBalance,
                 lastGrantCursor: existingByUser.lastGrantCursor,
             }
-
             await ctx.db.patch(existingByUser._id, { ...base, ...preservedData })
             return existingByUser._id
         }
@@ -164,19 +132,15 @@ export const upsertSubscription = mutation({
             creditsBalance: 0,
             lastGrantCursor: undefined,
         })
-        console.log('Created new subscription for user:', newId)
         return newId
-
-
     },
 })
-
 
 export const grantCreditsIfNeeded = mutation({
     args: {
         subscriptionId: v.id('subscriptions'),
-        idempotencyKey: v.string(), // `${subId}:${periodEndMs | "first"}`
-        amount: v.optional(v.number()), // default to sub.creditsGrantPerPeriod
+        idempotencyKey: v.string(),
+        amount: v.optional(v.number()),
         reason: v.optional(v.string()),
     },
     handler: async (ctx, { subscriptionId, idempotencyKey, amount, reason }) => {
@@ -188,19 +152,17 @@ export const grantCreditsIfNeeded = mutation({
             .first()
 
         if (dupe) return { ok: true, skipped: true, reason: 'duplicate-ledger' }
+
         const sub = await ctx.db.get(subscriptionId)
         if (!sub) return { ok: false, error: 'subscription-not-found' }
-
-        if (sub.lastGrantCursor === idempotencyKey) {
+        if (sub.lastGrantCursor === idempotencyKey)
             return { ok: true, skipped: true, reason: 'cursor-match' }
-        }
-
-        if (!ENTITLED.has(sub.status)) {
+        if (!ENTITLED.has(sub.status))
             return { ok: true, skipped: true, reason: 'not-entitled' }
-        }
 
         const grant = amount ?? sub.creditsGrantPerPeriod ?? DEFAULT_GRANT
         if (grant <= 0) return { ok: true, skipped: true, reason: 'zero-grant' }
+
         const next = Math.min(
             sub.creditsBalance + grant,
             sub.creditsRolloverLimit ?? DEFAULT_ROLLOVER_LIMIT
@@ -210,7 +172,6 @@ export const grantCreditsIfNeeded = mutation({
             creditsBalance: next,
             lastGrantCursor: idempotencyKey,
         })
-
 
         await ctx.db.insert('credits_ledger', {
             userId: sub.userId,
@@ -236,7 +197,6 @@ export const getCreditsBalance = query({
         return sub?.creditsBalance ?? 0
     },
 })
-
 
 export const consumeCredits = mutation({
     args: {
@@ -265,13 +225,8 @@ export const consumeCredits = mutation({
 
         if (!sub) return { ok: false, error: 'no-subscription' }
         if (!ENTITLED.has(sub.status)) return { ok: false, error: 'not-entitled' }
-        if (sub.creditsBalance < amount) {
-            return {
-                ok: false,
-                error: 'insufficient-credits',
-                balance: sub.creditsBalance,
-            }
-        }
+        if (sub.creditsBalance < amount)
+            return { ok: false, error: 'insufficient-credits', balance: sub.creditsBalance }
 
         const next = sub.creditsBalance - amount
         await ctx.db.patch(sub._id, { creditsBalance: next })

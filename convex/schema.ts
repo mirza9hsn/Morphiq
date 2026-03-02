@@ -47,12 +47,10 @@ const schema = defineSchema({
         .index('by_userId', ['userId'])
         .index('by_idempotencyKey', ['idempotencyKey']),
 
-
-    //=====Subscriptions=====
     subscriptions: defineTable({
         userId: v.id('users'),
-        polarCustomerId: v.string(),
-        polarSubscriptionId: v.string(),
+        stripeCustomerId: v.string(),           // renamed from: polarCustomerId
+        stripeSubscriptionId: v.string(),       // renamed from: polarSubscriptionId
         productId: v.optional(v.string()),
         priceId: v.optional(v.string()),
         planCode: v.optional(v.string()),
@@ -69,7 +67,7 @@ const schema = defineSchema({
         lastGrantCursor: v.optional(v.string()),
     })
         .index('by_userId', ['userId'])
-        .index('by_polarSubscriptionId', ['polarSubscriptionId'])
+        .index('by_stripeSubscriptionId', ['stripeSubscriptionId'])  // renamed index
         .index('by_status', ['status']),
 });
 

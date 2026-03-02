@@ -1,15 +1,16 @@
 export const isPublicRoutes = [
-    "api/auth(.*)",
-    "/"
+    "/",
+    "/auth(.*)",
+    "/api/auth(.*)"
 ]
 
 export const isProtectedRoutes = [
-    "/dashboard(.*)"
+    "/dashboard(.*)",
+    "/billing(.*)"
 ]
 
 export const isBypassRoutes = [
-    "api/polar/webhook",
-    "api/innjest(.*)",
-    "api/auth(.*)",
+    "/api/billing/webhook",
+    "/api/inngest(.*)",
     "/convex(.*)",
 ]

@@ -49,18 +49,19 @@ export default async function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <ConvexClientProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              disableTransitionOnChange
-            >
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <ConvexClientProvider>
               <ReduxProvider preloadedState={{ profile: { user: profile } }}>
                 {children}
                 <Toaster />
               </ReduxProvider>
-            </ThemeProvider>
-          </ConvexClientProvider>
+            </ConvexClientProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ConvexAuthNextjsServerProvider >

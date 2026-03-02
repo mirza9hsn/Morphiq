@@ -1,26 +1,38 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Polar } from "@polar-sh/sdk";
+import { NextRequest, NextResponse } from 'next/server'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2026-02-25.clover',
+})
 
 export async function GET(req: NextRequest) {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
+    const { searchParams } = new URL(req.url)
+    const userId = searchParams.get('userId')
 
     if (!userId) {
-        return NextResponse.json({ error: "userId is required" }, { status: 400 });
+        return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
 
-    const polar = new Polar({
-        server: process.env.POLAR_ENV === "sandbox" ? "sandbox" : "production",
-        accessToken: process.env.POLAR_ACCESS_TOKEN!,
-    });
-
-    const session = await polar.checkouts.create({
-        products: [process.env.POLAR_STANDARD_PLAN!],
-        successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/billing/success`,
+    const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [
+            {
+                price: process.env.STRIPE_STANDARD_PLAN_PRICE_ID!,
+                quantity: 1,
+            },
+        ],
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
         metadata: {
             userId,
         },
-    });
+        subscription_data: {
+            metadata: {
+                userId,
+            },
+        },
+    })
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url })
 }
