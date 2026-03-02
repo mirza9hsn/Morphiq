@@ -65,7 +65,7 @@ npx inngest-cli@latest dev
 
 **Terminal 4: Stripe Webhook Forwarding**
 ```bash
-C:\stripe\stripe.exe listen --forward-to https://localhost:3000/api/billing/webhook
+stripe listen --forward-to https://localhost:3000/api/billing/webhook
 ```
 
 ### 4. Open the App
