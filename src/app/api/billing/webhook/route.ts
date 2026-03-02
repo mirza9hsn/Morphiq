@@ -1,49 +1,40 @@
-import { NextRequest, NextResponse } from "next/server";
-import { inngest } from "@/inngest/client";
-import {
-    validateEvent,
-    WebhookVerificationError,
-} from "@polar-sh/sdk/webhooks";
-import type { PolarWebhookEvent } from "@/types/polar";
-import { isPolarWebhookEvent } from "@/types/polar";
+import { NextRequest, NextResponse } from 'next/server'
+import Stripe from 'stripe'
+import { inngest } from '@/inngest/client'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2026-02-25.clover',
+})
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-    const secret = process.env.POLAR_WEBHOOK_SECRET ?? "";
+    const secret = process.env.STRIPE_WEBHOOK_SECRET ?? ''
     if (!secret) {
-        return new NextResponse("Missing POLAR_WEBHOOK_SECRET", { status: 500 });
+        return new NextResponse('Missing STRIPE_WEBHOOK_SECRET', { status: 500 })
     }
 
-    const raw = await req.arrayBuffer();
+    const raw = await req.text()
+    const signature = req.headers.get('stripe-signature') ?? ''
 
-    const headersObject = Object.fromEntries(req.headers);
-
-    let verified: unknown;
+    let event: Stripe.Event
     try {
-        verified = validateEvent(Buffer.from(raw), headersObject, secret);
+        event = stripe.webhooks.constructEvent(raw, signature, secret)
     } catch (err) {
-        if (err instanceof WebhookVerificationError) {
-            return new NextResponse("Invalid signature", { status: 403 });
-        }
-        throw err;
+        console.error('❌ Webhook signature verification failed:', err)
+        return new NextResponse('Invalid signature', { status: 403 })
     }
 
-    if (!isPolarWebhookEvent(verified)) {
-        return new NextResponse("Unsupported event shape", { status: 400 });
-    }
-
-    const evt: PolarWebhookEvent = verified;
-    const id = String(evt.id ?? Date.now());
+    const id = event.id
 
     try {
         await inngest.send({
-            name: "polar/webhook.received",
+            name: 'stripe/webhook.received',
             id,
-            data: evt,
-        });
+            data: event,
+        })
     } catch (error) {
-        console.error(error);
-        return new NextResponse("Failed to process webhook", { status: 500 });
+        console.error('❌ Failed to send to Inngest:', error)
+        return new NextResponse('Failed to process webhook', { status: 500 })
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true })
 }
