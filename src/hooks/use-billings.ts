@@ -5,7 +5,8 @@ import { useState } from 'react'
 
 export const useSubscriptionPlan = () => {
     const [trigger, { isFetching }] = useLazyGetCheckoutQuery()
-    const { id } = useAppSelector((state) => state.profile.user)
+    const user = useAppSelector((state) => state.profile.user)
+    const id = user?.id
     const [activePlanId, setActivePlanId] = useState<string | null>(null)
 
     const onSubscribe = async (planId: string) => {
