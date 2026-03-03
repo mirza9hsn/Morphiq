@@ -1,3 +1,4 @@
+import { getAuthUserId } from '@convex-dev/auth/server'
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 
@@ -195,6 +196,43 @@ export const getCreditsBalance = query({
             .withIndex('by_userId', (q) => q.eq('userId', userId))
             .first()
         return sub?.creditsBalance ?? 0
+    },
+})
+
+export const enrollFreePlan = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const userId = await getAuthUserId(ctx)
+        if (!userId) return { ok: false, error: 'not-authenticated' }
+
+        const existing = await ctx.db
+            .query('subscriptions')
+            .withIndex('by_userId', (q) => q.eq('userId', userId))
+            .first()
+        if (existing) return { ok: true, skipped: true }
+
+        const idempotencyKey = `free-initial:${userId}`
+        const subscriptionId = await ctx.db.insert('subscriptions', {
+            userId,
+            stripeCustomerId: 'free',
+            stripeSubscriptionId: `free:${userId}`,
+            planCode: 'free',
+            status: 'active',
+            creditsBalance: DEFAULT_GRANT,
+            creditsGrantPerPeriod: DEFAULT_GRANT,
+            creditsRolloverLimit: DEFAULT_ROLLOVER_LIMIT,
+            lastGrantCursor: idempotencyKey,
+        })
+        await ctx.db.insert('credits_ledger', {
+            userId,
+            subscriptionId,
+            amount: DEFAULT_GRANT,
+            type: 'grant',
+            reason: 'free-plan-initial-grant',
+            idempotencyKey,
+            meta: { prev: 0, next: DEFAULT_GRANT },
+        })
+        return { ok: true, subscriptionId }
     },
 })
 

@@ -5,13 +5,16 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import React, { JSX } from 'react'
 import { api } from '../../../convex/_generated/api'
 import { Id } from '../../../convex/_generated/dataModel'
-import { CircleHelp, Hash, LayoutTemplate, User } from 'lucide-react'
+import { CircleHelp, Hash, LayoutTemplate, LogOut, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useAppSelector } from '@/redux/store'
 import CreateProject from '@/components/buttons/project'
 import { ThemeToggle } from '@/components/theme-toggle'
 import Autosave from '../canvas/autosave'
+import { useAuthActions } from '@convex-dev/auth/react'
+import { useRouter } from 'next/navigation'
 
 type TabProps = {
     label: string
@@ -20,6 +23,13 @@ type TabProps = {
 }
 
 const Navbar = () => {
+    const { signOut } = useAuthActions()
+    const router = useRouter()
+
+    const handleSignOut = async () => {
+        await signOut()
+        router.push('/auth/sign-in')
+    }
 
     const params = useSearchParams()
     const projectId = params.get('project')
@@ -118,12 +128,22 @@ const Navbar = () => {
                 >
                     <CircleHelp className="size-5 text-white" />
                 </Button>
-                <Avatar className="size-12 ml-2">
-                    <AvatarImage src={me?.image || ''} />
-                    <AvatarFallback>
-                        <User className="size-5 text-black" />
-                    </AvatarFallback>
-                </Avatar>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Avatar className="size-12 ml-2 cursor-pointer">
+                            <AvatarImage src={me?.image || ''} />
+                            <AvatarFallback>
+                                <User className="size-5 text-black" />
+                            </AvatarFallback>
+                        </Avatar>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleSignOut}>
+                            <LogOut className="size-4 mr-2" />
+                            Sign out
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 {hasCanvas && <Autosave />}
                 {!hasCanvas && !hasStyleGuide && <CreateProject />}
             </div>
