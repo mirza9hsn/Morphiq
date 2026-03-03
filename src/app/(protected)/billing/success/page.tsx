@@ -55,7 +55,7 @@ const Page = () => {
             setTimedOut(true);
             redirected.current = true;
             if (me && me.name) {
-                router.replace(`/billing/${combinedSlug(me.name)}`);
+                router.replace(`/dashboard/${combinedSlug(me.name)}`);
             }
         }, 45_000);
 
