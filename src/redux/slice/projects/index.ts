@@ -19,6 +19,7 @@ interface ProjectsState {
     // Track creation state
     isCreating: boolean
     createError: string | null
+    searchQuery: string
 }
 
 const initialState: ProjectsState = {
@@ -29,6 +30,7 @@ const initialState: ProjectsState = {
     lastFetched: null,
     isCreating: false,
     createError: null,
+    searchQuery: '',
 }
 
 const projectsSlice = createSlice({
@@ -94,6 +96,9 @@ const projectsSlice = createSlice({
             state.error = null
             state.createError = null
         },
+        setSearchQuery: (state, action: PayloadAction<string>) => {
+            state.searchQuery = action.payload
+        },
     },
 })
 export const {
@@ -108,5 +113,6 @@ export const {
     removeProject,
     clearProjects,
     clearErrors,
+    setSearchQuery,
 } = projectsSlice.actions
 export default projectsSlice.reducer
