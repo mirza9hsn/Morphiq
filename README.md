@@ -94,26 +94,8 @@ Once all services are running, open [https://localhost:3000](https://localhost:3
 
 This project uses [Claude Code](https://claude.ai/code) for AI-assisted development. The `.claude/` folder contains project-specific context, skills, and agents that keep Claude accurate as the codebase evolves.
 
-#### One-time setup
+#### Keeping AI docs in sync — fully automatic
 
-Install the Claude Code CLI globally:
+Every push to `main` triggers a GitHub Action that uses Claude Haiku to analyze what changed and automatically opens a PR updating `CLAUDE.md`, `GEMINI.md`, and `.claude/rules/`. No manual steps needed.
 
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-#### Keeping AI docs in sync
-
-After merging significant changes (new features, removals, refactors), run:
-
-```bash
-npm run sync-docs
-```
-
-This opens Claude Code, scans the last 25 commits and the current codebase structure, and automatically updates all documentation files under `.claude/` and `CLAUDE.md` to reflect what actually exists. It handles both additions and removals, and will report every change it made.
-
-> You do not need to use Claude Code day-to-day. Just run `sync-docs` after big changes so the AI context stays accurate for whoever does use it.
-
-#### Automated doc sync (GitHub Actions)
-
-Every push to `main` automatically checks which key files changed (schema, components, routes, prompts) and posts a reminder comment on the merged PR listing exactly what needs updating. No API key or extra cost — just run `npm run sync-docs` locally when you see the reminder.
+**Nothing to install or run.** Just push your code normally.
