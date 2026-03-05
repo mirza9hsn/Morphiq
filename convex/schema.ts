@@ -6,7 +6,7 @@ const schema = defineSchema({
     ...authTables,
 
 
-    // =====Projects=====
+    //=====Projects=====
     projects: defineTable({
         userId: v.id('users'),
         name: v.string(),

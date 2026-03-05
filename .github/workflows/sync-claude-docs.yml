@@ -15,7 +15,6 @@ on:
       - 'README.md'
       - 'scripts/sync-claude-docs.js'
 
-# If two pushes land close together, cancel the older run — always sync latest state
 concurrency:
   group: sync-claude-docs-${{ github.ref }}
   cancel-in-progress: true
@@ -39,31 +38,60 @@ jobs:
           node-version: '20'
 
       - name: Run sync script (Claude Haiku)
+        id: sync
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CI: 'true'
-        run: node scripts/sync-claude-docs.js
+        run: |
+          OUTPUT=$(node scripts/sync-claude-docs.js 2>&1)
+          echo "$OUTPUT"
+          echo "log<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Check for doc changes
         id: changes
         run: |
           git diff --quiet && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
 
+      - name: Write job summary
+        run: |
+          echo "## Claude Docs Sync" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.changes.outputs.changed }}" == "true" ]; then
+            echo "**Docs updated — PR opened for review.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**No changes needed — docs are already up to date.**" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Haiku Output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.sync.outputs.log }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       - name: Open PR with updated docs
         if: steps.changes.outputs.changed == 'true'
+        id: pr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: chore/sync-claude-docs-${{ github.ref_name }}
           commit-message: 'chore: sync claude docs'
           title: 'chore: sync Claude docs (${{ github.ref_name }})'
+          assignees: ${{ github.repository_owner }}
+          reviewers: ${{ secrets.REVIEWERS }}
           body: |
             ## Claude Docs Auto-Sync
 
-            Triggered by push to `${{ github.ref_name }}`.
+            Triggered by push to `${{ github.ref_name }}` by @${{ github.actor }}.
             Claude Haiku analyzed recent commits and updated documentation files.
 
-            **Review the diff and merge** — if anything looks wrong, close this PR
-            and run `npm run sync-docs` locally to correct it manually.
+            **Review the diff and merge.**
+
+            ### Haiku Output
+            ```
+            ${{ steps.sync.outputs.log }}
+            ```
           labels: documentation
           delete-branch: true
+
