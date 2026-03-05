@@ -87,3 +87,33 @@ Once all services are running, open [https://localhost:3000](https://localhost:3
 - [Convex — Next.js Quickstart](https://docs.convex.dev/quickstart/nextjs)
 - [Inngest — Next.js Quickstart](https://www.inngest.com/docs/getting-started/nextjs-quick-start?ref=docs-home)
 - [Stripe — Get Started](https://docs.stripe.com/get-started)
+
+---
+
+### AI-Assisted Development (Claude Code)
+
+This project uses [Claude Code](https://claude.ai/code) for AI-assisted development. The `.claude/` folder contains project-specific context, skills, and agents that keep Claude accurate as the codebase evolves.
+
+#### One-time setup
+
+Install the Claude Code CLI globally:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+#### Keeping AI docs in sync
+
+After merging significant changes (new features, removals, refactors), run:
+
+```bash
+npm run sync-docs
+```
+
+This opens Claude Code, scans the last 25 commits and the current codebase structure, and automatically updates all documentation files under `.claude/` and `CLAUDE.md` to reflect what actually exists. It handles both additions and removals, and will report every change it made.
+
+> You do not need to use Claude Code day-to-day. Just run `sync-docs` after big changes so the AI context stays accurate for whoever does use it.
+
+#### Automated doc sync (GitHub Actions)
+
+Every push to `main` automatically checks which key files changed (schema, components, routes, prompts) and posts a reminder comment on the merged PR listing exactly what needs updating. No API key or extra cost — just run `npm run sync-docs` locally when you see the reminder.

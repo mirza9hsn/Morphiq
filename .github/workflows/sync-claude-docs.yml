@@ -1,0 +1,69 @@
+name: Sync Claude Docs
+
+# NOW:    triggers on main (you're pushing directly)
+# LAUNCH: add 'develop' and 'staging' to the branches list below
+on:
+  push:
+    branches:
+      - main
+      # - develop   ← uncomment when you create this branch
+      # - staging   ← uncomment when you create this branch
+    paths-ignore:
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - '.claude/**'
+      - 'README.md'
+      - 'scripts/sync-claude-docs.js'
+
+# If two pushes land close together, cancel the older run — always sync latest state
+concurrency:
+  group: sync-claude-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 30
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run sync script (Claude Haiku)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CI: 'true'
+        run: node scripts/sync-claude-docs.js
+
+      - name: Check for doc changes
+        id: changes
+        run: |
+          git diff --quiet && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Open PR with updated docs
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/sync-claude-docs-${{ github.ref_name }}
+          commit-message: 'chore: sync claude docs'
+          title: 'chore: sync Claude docs (${{ github.ref_name }})'
+          body: |
+            ## Claude Docs Auto-Sync
+
+            Triggered by push to `${{ github.ref_name }}`.
+            Claude Haiku analyzed recent commits and updated documentation files.
+
+            **Review the diff and merge** — if anything looks wrong, close this PR
+            and run `npm run sync-docs` locally to correct it manually.
+          labels: documentation
+          delete-branch: true
