@@ -8,12 +8,15 @@ on:
       - main
       # - develop   ← uncomment when you create this branch
       # - staging   ← uncomment when you create this branch
-    paths-ignore:
-      - 'CLAUDE.md'
-      - 'GEMINI.md'
-      - '.claude/**'
-      - 'README.md'
-      - 'scripts/sync-claude-docs.js'
+    paths:
+      - 'convex/schema.ts'
+      - 'convex/**.ts'
+      - 'src/app/**'
+      - 'src/components/**'
+      - 'src/inngest/**'
+      - 'src/prompts/**'
+      - 'src/redux/slice/**'
+      - 'package.json'
 
 concurrency:
   group: sync-claude-docs-${{ github.ref }}

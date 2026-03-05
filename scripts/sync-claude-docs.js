@@ -45,7 +45,7 @@ async function main() {
   const claudeMd    = readFile('CLAUDE.md');
   const conventions = readFile('.claude/rules/conventions.md');
   const patterns    = readFile('.claude/rules/patterns.md');
-  const schema      = readFile('convex/schema.ts');
+
   const pkg         = readFile('package.json');
 
   const appDirs        = listDir('src/app');
@@ -58,68 +58,27 @@ async function main() {
   }
 
   // --- 2. Build prompt ---
-  const prompt = `You are syncing Claude AI documentation for the Morphiq project after recent commits.
+  const prompt = `Update Claude docs for Morphiq based on recent git changes.
 
-## Recent Commits
-${gitLog}
+CHANGES: ${gitLog}
+DIFF STAT: ${diffStat}
+SCHEMA DIFF: ${schemaDiff.slice(0, 1000) || 'none'}
+PKG DIFF: ${pkgDiff.slice(0, 400) || 'none'}
+SRC FILES: ${appDiff || 'none'}
 
-## Changed Files Summary
-${diffStat}
-
-## Key File Diffs
-
-### convex/schema.ts diff
-${schemaDiff.slice(0, 3000) || '(no changes)'}
-
-### package.json diff
-${pkgDiff.slice(0, 1500) || '(no changes)'}
-
-### Other changed src/ files
-${appDiff || '(no changes)'}
-
-## Current Documentation
-
-### CLAUDE.md (current)
+CURRENT CLAUDE.md:
 ${claudeMd}
 
-### .claude/rules/conventions.md (current)
+CURRENT conventions.md:
 ${conventions}
 
-### .claude/rules/patterns.md (current)
+CURRENT patterns.md:
 ${patterns}
 
-## Current Codebase Structure
+Return ONLY valid JSON, null means no change needed:
+{"CLAUDE.md":null,".claude/rules/conventions.md":null,".claude/rules/patterns.md":null,"summary":"one sentence"}
 
-### convex/schema.ts (full)
-${schema.slice(0, 3000)}
-
-### src/app/ contents: ${appDirs}
-### src/components/ contents: ${componentDirs}
-### src/redux/slice/ contents: ${reduxSlices}
-
-### package.json dependencies
-${pkg.slice(0, 2000)}
-
-## Your Task
-Update the three documentation files to accurately reflect what changed.
-
-Rules:
-- Make MINIMUM necessary changes. If a section is already accurate, return null for that file.
-- Keep CLAUDE.md under 100 lines. Move detail to rules files if needed.
-- Only document what you can confirm exists in the code — never invent.
-- Update Convex Schema section if schema changed.
-- Update Tech Stack if new packages added.
-- Update Project Structure if new directories appeared.
-- Add/remove patterns in patterns.md if workflows changed.
-- Add/remove conventions in conventions.md if coding patterns changed.
-
-Return ONLY a valid JSON object, no explanation outside the JSON:
-{
-  "CLAUDE.md": "full updated file content, or null if no changes needed",
-  ".claude/rules/conventions.md": "full updated file content, or null if no changes needed",
-  ".claude/rules/patterns.md": "full updated file content, or null if no changes needed",
-  "summary": "one sentence: what changed and what was updated"
-}`;
+Rules: minimum changes, CLAUDE.md under 100 lines, only document what exists.`;
 
   // --- 3. Call Haiku ---
   console.log('Calling Claude Haiku to analyze changes...');
