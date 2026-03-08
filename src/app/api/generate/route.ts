@@ -71,6 +71,13 @@ export async function POST(request: NextRequest) {
             model: anthropic('claude-sonnet-4-6'),
             messages: [
                 {
+                    role: 'system',
+                    content: systemPrompt,
+                    providerOptions: {
+                        anthropic: { cacheControl: { type: 'ephemeral' } },
+                    },
+                },
+                {
                     role: 'user',
                     content: [
                         {
@@ -88,7 +95,6 @@ export async function POST(request: NextRequest) {
                     ],
                 },
             ],
-            system: systemPrompt,
             temperature: 0.7,
         })
 

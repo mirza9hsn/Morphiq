@@ -20,6 +20,9 @@
 # production
 /build
 
+# compiled component bundles (rebuilt by `npm run build:ui` / postbuild)
+/public/morphiq-ui
+
 # misc
 .DS_Store
 *.pem

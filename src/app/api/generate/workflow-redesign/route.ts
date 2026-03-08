@@ -56,6 +56,13 @@ export async function POST(request: NextRequest) {
             model: anthropic('claude-sonnet-4-6'),
             messages: [
                 {
+                    role: 'system',
+                    content: prompts.generativeUi.system,
+                    providerOptions: {
+                        anthropic: { cacheControl: { type: 'ephemeral' } },
+                    },
+                },
+                {
                     role: 'user',
                     content: [
                         {
@@ -65,7 +72,6 @@ export async function POST(request: NextRequest) {
                     ],
                 },
             ],
-            system: prompts.generativeUi.system,
             temperature: 0.7,
         })
 
@@ -81,7 +87,7 @@ export async function POST(request: NextRequest) {
                     }
 
                     if (hasContent) {
-                        await ConsumeCreditsQuery({ amount: 4 })
+                        await ConsumeCreditsQuery({ amount: 1 })
                     }
                     controller.close()
                 } catch (error) {

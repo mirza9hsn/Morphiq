@@ -91,8 +91,14 @@ export async function POST(request: NextRequest) {
         const result = await generateObject({
             model: anthropic('claude-sonnet-4-6'),
             schema: StyleGuideSchema,
-            system: systemPrompt,
             messages: [
+                {
+                    role: 'system',
+                    content: systemPrompt,
+                    providerOptions: {
+                        anthropic: { cacheControl: { type: 'ephemeral' } },
+                    },
+                },
                 {
                     role: 'user',
                     content: [
