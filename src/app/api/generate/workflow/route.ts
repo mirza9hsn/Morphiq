@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Check credits (workflow generation consumes 1 credit)
         const { ok: balanceOk, balance: balanceBalance } = await CreditsBalanceQuery()
         if (!balanceOk || balanceBalance === 0) {
             return NextResponse.json(
@@ -37,14 +36,12 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Get project ID from request body for style guide
         const styleGuide = await StyleGuideQuery(projectId)
         const styleGuideData = styleGuide.styleGuide._valueJSON as unknown as {
             colorSections: unknown[]
             typographySections: unknown[]
         }
 
-        // Get inspiration images
         const inspirationResult = await InspirationImagesQuery(projectId)
         const images = inspirationResult.images._valueJSON as unknown as {
             url: string
@@ -54,7 +51,6 @@ export async function POST(request: NextRequest) {
         const colors = styleGuideData?.colorSections || []
         const typography = styleGuideData?.typographySections || []
 
-        // Define the page types for dynamic generation
         const pageTypes = [
             'Dashboard/Analytics page with charts, metrics, and KPIs',
             'Settings/Configuration page with preferences and account management',
@@ -64,7 +60,7 @@ export async function POST(request: NextRequest) {
 
         const selectedPageType = pageTypes[pageIndex] || pageTypes[0]
 
-        const userPrompt = prompts.workflow.user(
+        const userPrompt = prompts.workflowTsx.user(
             selectedPageType,
             currentHTML,
             colors,
@@ -72,13 +68,12 @@ export async function POST(request: NextRequest) {
             imageUrls.length
         )
 
-        // Create streaming response for workflow page generation
         const result = await streamText({
             model: anthropic('claude-sonnet-4-6'),
             messages: [
                 {
                     role: 'system',
-                    content: prompts.generativeUi.system,
+                    content: prompts.reactUi.system,
                     providerOptions: {
                         anthropic: { cacheControl: { type: 'ephemeral' } },
                     },
@@ -100,15 +95,13 @@ export async function POST(request: NextRequest) {
             temperature: 0.7,
         })
 
-        // Convert to streaming response
         const stream = new ReadableStream({
             async start(controller) {
                 try {
                     let hasContent = false
                     for await (const chunk of result.textStream) {
                         hasContent = true
-                        const encoder = new TextEncoder()
-                        controller.enqueue(encoder.encode(chunk))
+                        controller.enqueue(new TextEncoder().encode(chunk))
                     }
 
                     if (hasContent) {
@@ -123,7 +116,7 @@ export async function POST(request: NextRequest) {
 
         return new Response(stream, {
             headers: {
-                'Content-Type': 'text/html; charset=utf-8',
+                'Content-Type': 'text/plain; charset=utf-8',
                 'Cache-Control': 'no-cache',
                 Connection: 'keep-alive',
             },

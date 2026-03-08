@@ -86,9 +86,13 @@ export interface GeneratedUIShape extends BaseShape {
   y: number;
   w: number;
   h: number;
-  uiSpecData: string | null;
+  uiSpecData: string | null;      // stores the final .tsx string
+  streamingTsx?: string | null;   // live TSX text during generation (for Code Tab)
+  componentName?: string;          // PascalCase component name extracted from TSX
+  name?: string;                   // User-editable name (defaults to componentName)
+  breakpoint?: 'mobile' | 'tablet' | 'desktop';
   sourceFrameId: string;
-  isWorkflowPage?: boolean; // Flag to identify workflow pages
+  isWorkflowPage?: boolean;
 }
 
 export type Shape =
@@ -280,13 +284,17 @@ const makeGeneratedUI = (p: {
   y: number;
   w: number;
   h: number;
-  uiSpecData: string | null; // HTML markup as string
+  uiSpecData: string | null;
   sourceFrameId: string;
   id?: string;
   stroke?: string;
   strokeWidth?: number;
   fill?: string | null;
-  isWorkflowPage?: boolean; // Flag to identify workflow pages
+  isWorkflowPage?: boolean;
+  componentName?: string;
+  name?: string;
+  breakpoint?: 'mobile' | 'tablet' | 'desktop';
+  streamingTsx?: string | null;
 }): GeneratedUIShape => ({
   id: p.id ?? nanoid(),
   type: "generatedui",
@@ -295,9 +303,13 @@ const makeGeneratedUI = (p: {
   w: p.w,
   h: p.h,
   uiSpecData: p.uiSpecData,
+  streamingTsx: p.streamingTsx ?? null,
+  componentName: p.componentName,
+  name: p.name ?? p.componentName,
+  breakpoint: p.breakpoint ?? 'desktop',
   sourceFrameId: p.sourceFrameId,
   isWorkflowPage: p.isWorkflowPage,
-  stroke: "transparent", // No border for generated UI
+  stroke: "transparent",
   strokeWidth: 0,
   fill: p.fill ?? null,
 });

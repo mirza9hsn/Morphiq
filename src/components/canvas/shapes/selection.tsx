@@ -77,6 +77,7 @@ export const SelectionOverlay = ({
     shape.type === 'frame' ||
     shape.type === 'rect' ||
     shape.type === 'ellipse' ||
+    shape.type === 'generatedui' ||
     shape.type === 'freedraw' ||
     shape.type === 'line' ||
     shape.type === 'arrow' ||
@@ -84,8 +85,8 @@ export const SelectionOverlay = ({
 
   const handlePointerDown = (e: React.PointerEvent, corner: string) => {
     e.stopPropagation()
-    // We'll handle the resize logic in the canvas hook
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      // We'll handle the resize logic in the canvas hook
+      ; (e.target as HTMLElement).setPointerCapture(e.pointerId)
 
     // Add data attributes to identify the resize operation
     const event = new CustomEvent('shape-resize-start', {
@@ -110,7 +111,7 @@ export const SelectionOverlay = ({
   }
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+    ; (e.target as HTMLElement).releasePointerCapture(e.pointerId)
     const event = new CustomEvent('shape-resize-end', {
       detail: { shapeId: shape.id },
     })

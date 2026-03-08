@@ -10,7 +10,8 @@ import {
     Eraser,
     MousePointer2,
     Hash,
-    Square
+    Square,
+    Sparkles
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,12 @@ const tools = [
         label: "Eraser",
         description: "Remove shapes",
     },
+    {
+        id: "text-prompt",
+        icon: <Sparkles className="w-4 h-4 text-primary" />,
+        label: "AI Prompt",
+        description: "Generate design with AI (Cmd+K)",
+    },
 ];
 
 const ToolBarShapes = () => {
@@ -85,7 +92,13 @@ const ToolBarShapes = () => {
                         key={tool.id}
                         variant={"ghost"}
                         size="lg"
-                        onClick={() => selectTool(tool.id as any)}
+                        onClick={() => {
+                            if (tool.id === 'text-prompt') {
+                                window.dispatchEvent(new CustomEvent('morphiq-open-text-prompt'))
+                            } else {
+                                selectTool(tool.id as any)
+                            }
+                        }}
                         className={cn(
                             "cursor-pointer rounded-full p-3",
                             currentTool === tool.id

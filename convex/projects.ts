@@ -136,15 +136,20 @@ export const updateProjectSketches = mutation({
     args: {
         projectId: v.id('projects'),
         sketchesData: v.any(),
+        generatedDesignData: v.optional(v.any()),
         viewportData: v.optional(v.any()),
     },
-    handler: async (ctx, { projectId, sketchesData, viewportData }) => {
+    handler: async (ctx, { projectId, sketchesData, generatedDesignData, viewportData }) => {
         const project = await ctx.db.get(projectId)
         if (!project) throw new Error('Project not found')
 
         const updateData: any = {
             sketchesData,
             lastModified: Date.now(),
+        }
+
+        if (generatedDesignData) {
+            updateData.generatedDesignData = generatedDesignData
         }
 
         if (viewportData) {

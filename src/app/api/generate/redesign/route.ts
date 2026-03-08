@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
         const {
             userMessage,
             generatedUIId,
-            currentHTML,
+            currentTsx,
             wireframeSnapshot,
             projectId,
         } = body
@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Check credits (redesign consumes 1 credit)
         const { ok: balanceOk, balance: balanceBalance } =
             await CreditsBalanceQuery()
         if (!balanceOk || balanceBalance === 0) {
@@ -40,14 +39,12 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Get style guide
         const styleGuide = await StyleGuideQuery(projectId)
         const styleGuideData = styleGuide.styleGuide._valueJSON as unknown as {
             colorSections: unknown[]
             typographySections: unknown[]
         }
 
-        // Get inspiration images
         const inspirationResult = await InspirationImagesQuery(projectId)
         const images = inspirationResult.images._valueJSON as unknown as {
             url: string
@@ -57,21 +54,20 @@ export async function POST(request: NextRequest) {
         const colors = styleGuideData?.colorSections || []
         const typography = styleGuideData?.typographySections || []
 
-        const userPrompt = prompts.redesign.user(
+        const userPrompt = prompts.redesignTsx.user(
             userMessage,
-            currentHTML,
-            wireframeSnapshot,
+            currentTsx ?? null,
+            wireframeSnapshot ?? null,
             colors,
             typography
         )
 
-        // Create streaming response for redesign
         const result = await streamText({
             model: anthropic('claude-sonnet-4-6'),
             messages: [
                 {
                     role: 'system',
-                    content: prompts.generativeUi.system,
+                    content: prompts.reactUi.system,
                     providerOptions: {
                         anthropic: { cacheControl: { type: 'ephemeral' } },
                     },
@@ -88,12 +84,7 @@ export async function POST(request: NextRequest) {
                             image: url,
                         })),
                         ...(wireframeSnapshot
-                            ? [
-                                {
-                                    type: 'image' as const,
-                                    image: wireframeSnapshot,
-                                },
-                            ]
+                            ? [{ type: 'image' as const, image: wireframeSnapshot }]
                             : []),
                     ],
                 },
@@ -101,15 +92,13 @@ export async function POST(request: NextRequest) {
             temperature: 0.7,
         })
 
-        // Convert to streaming response
         const stream = new ReadableStream({
             async start(controller) {
                 try {
                     let hasContent = false
                     for await (const chunk of result.textStream) {
                         hasContent = true
-                        const encoder = new TextEncoder()
-                        controller.enqueue(encoder.encode(chunk))
+                        controller.enqueue(new TextEncoder().encode(chunk))
                     }
 
                     if (hasContent) {
@@ -124,7 +113,7 @@ export async function POST(request: NextRequest) {
 
         return new Response(stream, {
             headers: {
-                'Content-Type': 'text/html; charset=utf-8',
+                'Content-Type': 'text/plain; charset=utf-8',
                 'Cache-Control': 'no-cache',
                 Connection: 'keep-alive',
             },

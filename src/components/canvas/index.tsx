@@ -14,6 +14,9 @@ import { SelectionOverlay } from './shapes/selection'
 import InspirationSidebar from './shapes/inspiration-sidebar'
 import { useGlobalChat } from '@/hooks/use-canvas'
 import ChatWindow from './shapes/generatedui/chat'
+import { TextPromptOverlay } from './text-prompt-overlay'
+import { useAppSelector, useAppDispatch, RootState } from '@/redux/store'
+import { setActiveChatId } from '@/redux/slice/chat'
 
 type Props = {}
 
@@ -36,16 +39,29 @@ const InfiniteCanvas = (props: Props) => {
         hasSelectedText,
     } = useInfiniteCanvas()
 
-
     const { isInspirationOpen, closeInspiration, toggleInspiration } = useInspiration()
     const {
         isChatOpen,
-        activeGeneratedUIId,
         closeChat,
         toggleChat,
         generateWorkflow,
         exportDesign,
     } = useGlobalChat()
+
+    const dispatch = useAppDispatch()
+    const activeGeneratedUIId = useAppSelector((state: RootState) => state.chat.activeChatId)
+
+    // Sync selection with activeChatId
+    React.useEffect(() => {
+        const selectedIds = Object.keys(selectedShapes)
+        if (selectedIds.length === 1) {
+            const shape = shapes.find(s => s.id === selectedIds[0])
+            if (shape?.type === 'generatedui') {
+                dispatch(setActiveChatId(shape.id))
+            }
+        }
+    }, [selectedShapes, shapes, dispatch])
+
     const draft = getDraftShape()
     const freeDrawPts = getFreeDrawPoints()
 
@@ -60,6 +76,7 @@ const InfiniteCanvas = (props: Props) => {
                     onClose={closeChat}
                 />
             )}
+            <TextPromptOverlay />
 
             <div
                 ref={attachCanvasRef}
@@ -100,6 +117,7 @@ const InfiniteCanvas = (props: Props) => {
                             toggleChat={toggleChat}
                             exportDesign={exportDesign}
                             generateWorkflow={generateWorkflow}
+                            isSelected={!!selectedShapes[shape.id]}
                         />
                     ))}
 

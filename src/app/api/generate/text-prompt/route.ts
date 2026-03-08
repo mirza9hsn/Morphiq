@@ -1,32 +1,21 @@
-import { ConsumeCreditsQuery, CreditsBalanceQuery, InspirationImagesQuery, StyleGuideQuery } from "@/convex/query.config"
+import { ConsumeCreditsQuery, CreditsBalanceQuery, StyleGuideQuery } from "@/convex/query.config"
 import { prompts } from "@/prompts"
-import { streamText } from "ai"
-import { anthropic } from "@ai-sdk/anthropic"
-import { NextRequest, NextResponse } from "next/server"
-
+import { streamText } from 'ai'
+import { anthropic } from '@ai-sdk/anthropic'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
     try {
-        const formData = await request.formData()
-        const imageFile = formData.get('image') as File
-        const projectId = formData.get('projectId') as string
+        const { prompt, projectId } = await request.json()
 
-        if (!imageFile) {
+        if (!prompt) {
             return NextResponse.json(
-                { error: 'No image file provided' },
+                { error: 'No prompt provided' },
                 { status: 400 }
             )
         }
 
-        if (!imageFile.type.startsWith('image/')) {
-            return NextResponse.json(
-                { error: 'Invalid file type. Only images are allowed.' },
-                { status: 400 }
-            )
-        }
-
-        const { ok: balanceOk, balance: balanceBalance } =
-            await CreditsBalanceQuery()
+        const { ok: balanceOk, balance: balanceBalance } = await CreditsBalanceQuery()
 
         if (!balanceOk) {
             return NextResponse.json(
@@ -42,20 +31,12 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const imageBuffer = await imageFile.arrayBuffer()
-        const base64Image = Buffer.from(imageBuffer).toString('base64')
         const styleGuide = await StyleGuideQuery(projectId)
-
         const guide = (styleGuide?.styleGuide as any)?._valueJSON as unknown as {
-            colorSections?: string[]
-            typographySections?: string[]
+            colorSections?: any[]
+            typographySections?: any[]
         } || {}
 
-        const inspirationImages = await InspirationImagesQuery(projectId)
-        const images = (inspirationImages?.images as any)?._valueJSON as unknown as {
-            url: string
-        }[] || []
-        const imageUrls = images.map((img: any) => img.url).filter(Boolean)
         const colors = guide?.colorSections || []
         const typography = guide?.typographySections || []
 
@@ -64,27 +45,11 @@ export async function POST(request: NextRequest) {
             messages: [
                 {
                     role: 'system',
-                    content: prompts.reactUi.system,
-                    providerOptions: {
-                        anthropic: { cacheControl: { type: 'ephemeral' } },
-                    },
+                    content: prompts.textToReactUi.system,
                 },
                 {
                     role: 'user',
-                    content: [
-                        {
-                            type: 'text',
-                            text: prompts.reactUi.user(colors, typography),
-                        },
-                        {
-                            type: 'image',
-                            image: base64Image,
-                        },
-                        ...imageUrls.map((url) => ({
-                            type: 'image' as const,
-                            image: url,
-                        })),
-                    ],
+                    content: prompts.textToReactUi.user(prompt, colors, typography),
                 },
             ],
             temperature: 0.7,
@@ -120,7 +85,7 @@ export async function POST(request: NextRequest) {
         })
 
     } catch (error) {
-        console.error('POST /api/generate unhandled error:', error)
+        console.error('POST /api/generate/text-prompt unhandled error:', error)
         return NextResponse.json(
             {
                 error: 'Internal server error',

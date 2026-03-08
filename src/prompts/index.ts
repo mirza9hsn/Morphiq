@@ -158,7 +158,7 @@ Return ONLY the JSON object matching the exact schema structure.`,
   },
   generativeUi: {
     system: `
-You are a design engineer that converts wireframes into production-ready HTML.
+You are a world-class Design Engineer. Your goal is to convert wireframes into production-ready React TSX components.
 Input Processing Order (CRITICAL)
 
 WIREFRAME ANALYSIS FIRST: Before generating any HTML, mentally catalog every wireframe region:
@@ -203,19 +203,12 @@ Wireframe defines ALL structure - never add/remove sections
 Respect relative positioning and sizing
 Maintain visual hierarchy shown in wireframe
 
-HTML Generation Requirements
+## TSX Generation Requirements
 Structure:
-<div data-generated-ui>
-  <style>
-    [data-generated-ui] .c-bg { background-color: #FFFFFF; }
-    [data-generated-ui] .c-fg { color: #111111; }
-    /* ... all required color classes with literal hex values */
-  </style>
-  
-  <div class="container mx-auto max-w-7xl">
-    <!-- Your UI components here -->
-  </div>
-</div>
+Return a single self-contained React functional component.
+Use Tailwind v4 for layout and spacing.
+Use lucide-react for icons.
+Use framer-motion for animations.
 Required Color Classes (use literal hex from styleGuide):
 
 Backgrounds: .c-bg, .c-card-bg, .c-primary-bg, .c-secondary-bg, .c-accent-bg, .c-muted-bg
@@ -341,7 +334,7 @@ ID VERIFICATION:
 ✅ Buttons have action-descriptive IDs (cta-button, submit-btn, etc.)
 ✅ All sections have section-type IDs (hero-section, about-section, etc.)
 Output Format
-Return ONLY the HTML wrapped in <div data-generated-ui>. No explanations, no comments, no additional text.
+Return ONLY the raw .tsx file content. No explanations, no comments, no markdown code fences.
     `,
     user: (colors: any[], typography: any[]) => `Use the user-provided styleGuide for all visual decisions: map its colors, typography scale, spacing, and radii directly to Tailwind v4 utilities (use arbitrary color classes like text-[#RRGGBB] / bg-[#RRGGBB] when hexes are given), enforce WCAG AA contrast (≥4.5:1 body, ≥3:1 large text), and if any token is missing fall back to neutral light defaults. Never invent new tokens; keep usage consistent across components.
 
@@ -412,7 +405,7 @@ DESIGN CONSISTENCY REQUIREMENTS:
 5. Ensure the page feels like it belongs to the same application - perfect visual consistency
 
 TECHNICAL REQUIREMENTS:
-1. Generate clean, semantic HTML with Tailwind CSS classes matching the main page
+1. Generate clean, modular React TSX components with Tailwind v4 classes matching the main page
 2. Use similar shadcn/ui component patterns as shown in the main page
 3. Include responsive design considerations
 4. Add proper accessibility attributes (aria-labels, semantic HTML)
@@ -425,18 +418,16 @@ CONTENT GUIDELINES:
 - Include proper navigation elements if they exist in the main page
 - Add interactive elements like buttons, forms, tables, etc. as appropriate for the page type
 
-Please generate a complete, professional HTML page that serves as a ${selectedPageType} while maintaining perfect visual and functional consistency with the main design.`
+Please generate a complete, professional React TSX component that serves as a ${selectedPageType} while maintaining perfect visual and functional consistency with the main design.`
 
       if (colors.length > 0) {
-        prompt += `\n\nStyle Guide Colors:\n${(
-          colors as Array<{
-            swatches: Array<{
-              name: string
-              hexColor: string
-              description: string
-            }>
+        const colorsList = (colors as Array<{
+          swatches: Array<{
+            name: string
+            hexColor: string
+            description: string
           }>
-        )
+        }>)
           .map((color) =>
             color.swatches
               .map(
@@ -445,22 +436,21 @@ Please generate a complete, professional HTML page that serves as a ${selectedPa
               )
               .join(', ')
           )
-          .join(', ')}`
+          .join(', ')
+        prompt += `\n\nStyle Guide Colors: \n${colorsList}`
       }
 
       if (typography.length > 0) {
-        prompt += `\n\nTypography:\n${(
-          typography as Array<{
-            styles: Array<{
-              name: string
-              description: string
-              fontFamily: string
-              fontWeight: string
-              fontSize: string
-              lineHeight: string
-            }>
+        const typographyList = (typography as Array<{
+          styles: Array<{
+            name: string
+            description: string
+            fontFamily: string
+            fontWeight: string
+            fontSize: string
+            lineHeight: string
           }>
-        )
+        }>)
           .map((typo) =>
             typo.styles
               .map(
@@ -469,48 +459,49 @@ Please generate a complete, professional HTML page that serves as a ${selectedPa
               )
               .join(', ')
           )
-          .join(', ')}`
+          .join(', ')
+        prompt += `\n\nTypography: \n${typographyList}`
       }
 
       if (imageUrlsLength > 0) {
         prompt += `\n\nInspiration Images Available: ${imageUrlsLength} reference images for visual style and inspiration.`
       }
 
-      prompt += `\n\nPlease generate a professional ${selectedPageType} that maintains complete design consistency with the main page while serving its specific functional purpose. Be creative and contextually appropriate!`
+      prompt += `\n\nPlease generate a professional ${selectedPageType} that maintains complete design consistency with the main page while serving its specific functional purpose.Be creative and contextually appropriate!`
 
       return prompt
     },
   },
   workflowRedesign: {
-    user: (userMessage: string, currentHTML: string, styleGuideData: any) => {
-      let userPrompt = `CRITICAL: You are redesigning a SPECIFIC WORKFLOW PAGE, not creating a new page from scratch.
+    user: (userMessage: string, currentTsx: string, styleGuideData: any) => {
+      let userPrompt = `CRITICAL: You are redesigning a SPECIFIC WORKFLOW PAGE TSX component, not creating a new page from scratch.
 
 USER REQUEST: "${userMessage}"
 
-CURRENT WORKFLOW PAGE HTML TO REDESIGN:
-${currentHTML}
+CURRENT WORKFLOW PAGE TSX TO REDESIGN:
+${currentTsx}
 
 WORKFLOW REDESIGN REQUIREMENTS:
-1. MODIFY THE PROVIDED HTML ABOVE - do not create a completely new page
+1. MODIFY THE PROVIDED TSX ABOVE - do not create a completely new page
 2. Apply the user's requested changes to the existing workflow page design
-3. Keep the same page type and core functionality (Dashboard, Settings, Profile, or Listing)
+3. Keep the same page type and core functionality(Dashboard, Settings, Profile, or Listing)
 4. Maintain the existing layout structure and component hierarchy
-5. Preserve all functional elements while applying visual/content changes
+5. Preserve all functional elements while applying visual / content changes
 6. Keep the same general organization and workflow purpose
 
 MODIFICATION GUIDELINES:
-1. Start with the provided HTML structure as your base
-2. Apply the requested changes (colors, layout, content, styling, etc.)
+1. Start with the provided TSX structure as your base
+2. Apply the requested changes(colors, layout, content, styling, etc.)
 3. Keep all existing IDs and semantic structure intact
-4. Maintain shadcn/ui component patterns and classes
+4. Maintain shadcn / ui component patterns and classes
 5. Preserve responsive design and accessibility features
 6. Update content, styling, or layout as requested but keep core structure
 
 IMPORTANT:
 - DO NOT generate a completely different page
-- DO NOT revert to any "original" or "main" page design
-- DO redesign the specific workflow page shown in the HTML above
-- DO apply the user's changes to that specific page
+  - DO NOT revert to any "original" or "main" page design
+    - DO redesign the specific workflow page shown in the TSX above
+      - DO apply the user's changes to that specific page
 
 colors: ${styleGuideData.colorSections
           .map((color: any) =>
@@ -520,7 +511,8 @@ colors: ${styleGuideData.colorSections
               })
               .join(', ')
           )
-          .join(', ')}
+          .join(', ')
+        }
 typography: ${styleGuideData.typographySections
           .map((typography: any) =>
             typography.styles
@@ -529,15 +521,160 @@ typography: ${styleGuideData.typographySections
               })
               .join(', ')
           )
-          .join(', ')}
+          .join(', ')
+        }
 
-Please generate the modified version of the provided workflow page HTML with the requested changes applied.`
+Please generate the modified version of the provided workflow page TSX with the requested changes applied.`
 
-      userPrompt += `\n\nPlease generate a professional redesigned workflow page that incorporates the requested changes while maintaining the core functionality and design consistency.`
+      userPrompt += `\n\nPlease generate a professional redesigned workflow page TSX that incorporates the requested changes while maintaining the core functionality and design consistency.`
 
       return userPrompt
     },
   },
+  // ─── React TSX generation ────────────────────────────────────────────────────
+  reactUi: {
+    system: `
+You are a React UI engineer.Generate self - contained React components that run in a sandboxed iframe.
+
+## Allowed Imports(ONLY these — no exceptions)
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { IconName } from 'lucide-react'
+
+## Rules
+1. Write ALL components inline in a single file — no external component library.
+2. Name the default export in PascalCase matching the page type(e.g.DashboardPage, EcommerceStore).
+3. Apply style guide colors via inline CSS variables on the root wrapper div:
+<div style={ { '--primary': '#HEX', '--background': '#HEX', background: 'var(--background)', color: 'var(--foreground)' } as React.CSSProperties }>
+  4. Use Tailwind classes for layout and spacing.Use inline styles ONLY for dynamic / CSS - variable colors.
+5. Use framer - motion for animations(motion.div, AnimatePresence).
+6. Use lucide - react for icons.
+7. Generate REAL content: actual names, prices, copy.No Lorem Ipsum.
+8. Keep components functional with useState / useEffect where appropriate.
+9. Export default the main component at the end of the file.
+
+## Output Format
+Return ONLY the.tsx file content.No explanation.No markdown code fences.
+    `,
+    user: (colors: any[], typography: any[]) =>
+      `Generate a React TSX landing page based on the wireframe image provided.
+
+Style Guide Colors: ${colors
+        .map((c: any) => c.swatches.map((s: any) => `${s.name}: ${s.hexColor}`).join(', '))
+        .join(', ')
+      }
+Typography: ${typography
+        .map((t: any) => t.styles.map((s: any) => `${s.name}: ${s.fontFamily} ${s.fontWeight}`).join(', '))
+        .join(', ')
+      }
+
+Analyze the wireframe to determine the page type and choose an appropriate PascalCase component name.
+Return ONLY the.tsx file.No markdown fences.`,
+  },
+
+  workflowTsx: {
+    user: (
+      selectedPageType: string,
+      currentTsx: string,
+      colors: any[],
+      typography: any[],
+      imageUrlsLength: number
+    ) => {
+      let prompt = `Generate a React TSX workflow page that complements the provided main page.
+
+PAGE TO GENERATE: "${selectedPageType}"
+
+MAIN PAGE TSX REFERENCE(for design consistency):
+${currentTsx.substring(0, 2000)}...
+
+REQUIREMENTS:
+1. Analyze the main TSX to understand the CSS variable values and component structure in use
+2. Generate a "${selectedPageType}" that feels like a natural extension of the same application
+3. Use the SAME CSS variable values for colors that appear in the reference TSX
+4. Write all components inline — only use react, framer - motion, lucide - react
+5. Generate realistic, contextually appropriate content for this page type
+6. Export default a PascalCase component matching the page type
+`
+      if (colors.length > 0) {
+        prompt += `\nStyle Guide Colors: ${colors
+          .map((c: any) => c.swatches.map((s: any) => `${s.name}: ${s.hexColor}`).join(', '))
+          .join(', ')
+          } `
+      }
+      if (typography.length > 0) {
+        prompt += `\nTypography: ${typography
+          .map((t: any) => t.styles.map((s: any) => `${s.name}: ${s.fontFamily} ${s.fontWeight}`).join(', '))
+          .join(', ')
+          } `
+      }
+      if (imageUrlsLength > 0) {
+        prompt += `\nInspiration images available: ${imageUrlsLength} reference images.`
+      }
+      prompt += `\n\nReturn ONLY the.tsx file.No markdown fences.`
+      return prompt
+    },
+  },
+
+  workflowRedesignTsx: {
+    user: (userMessage: string, currentTsx: string, styleGuideData: any) =>
+      `CRITICAL: You are redesigning a SPECIFIC WORKFLOW PAGE TSX component, not creating a new page.
+
+USER REQUEST: "${userMessage}"
+
+CURRENT WORKFLOW PAGE TSX TO REDESIGN:
+${currentTsx}
+
+REQUIREMENTS:
+1. MODIFY THE PROVIDED TSX ABOVE — do not create a completely different page
+2. Apply the user's requested changes to the existing workflow page
+3. Keep the same page type, component name, and core functionality
+4. Maintain the existing structure; apply visual / content changes as requested
+5. Keep the same component structure and CSS variable approach — only react, framer - motion, lucide - react imports
+
+colors: ${styleGuideData.colorSections
+        .map((c: any) => c.swatches.map((s: any) => `${s.name}: ${s.hexColor}`).join(', '))
+        .join(', ')
+      }
+typography: ${styleGuideData.typographySections
+        .map((t: any) => t.styles.map((s: any) => `${s.name}: ${s.fontFamily} ${s.fontWeight}`).join(', '))
+        .join(', ')
+      }
+
+Return ONLY the.tsx file.No markdown fences.`,
+  },
+
+  redesignTsx: {
+    user: (
+      userMessage: string,
+      currentTsx: string | null,
+      wireframeSnapshot: string | null,
+      colors: any[],
+      typography: any[]
+    ) => {
+      let prompt = `Redesign this React TSX component based on: "${userMessage}"`
+      if (currentTsx) {
+        prompt += `\n\nCurrent TSX for reference: \n${currentTsx.substring(0, 1500)}...`
+      }
+      if (wireframeSnapshot) {
+        prompt += `\n\nWireframe image provided — use as layout / structure context.`
+      }
+      if (colors.length > 0) {
+        prompt += `\n\nStyle Guide Colors: ${colors
+          .map((c: any) => c.swatches.map((s: any) => `${s.name}: ${s.hexColor}`).join(', '))
+          .join(', ')
+          } `
+      }
+      if (typography.length > 0) {
+        prompt += `\n\nTypography: ${typography
+          .map((t: any) => t.styles.map((s: any) => `${s.name}: ${s.fontFamily} ${s.fontWeight}`).join(', '))
+          .join(', ')
+          } `
+      }
+      prompt += `\n\nReturn ONLY the.tsx file.No markdown fences.`
+      return prompt
+    },
+  },
+
   redesign: {
     user: (
       userMessage: string,
@@ -549,7 +686,7 @@ Please generate the modified version of the provided workflow page HTML with the
       let prompt = `Please redesign this UI based on my request: "${userMessage}"`
 
       if (currentHTML) {
-        prompt += `\n\nCurrent HTML for reference:\n${currentHTML.substring(0, 1000)}...`
+        prompt += `\n\nCurrent HTML for reference: \n${currentHTML.substring(0, 1000)}...`
       }
 
       if (wireframeSnapshot) {
@@ -557,15 +694,13 @@ Please generate the modified version of the provided workflow page HTML with the
       }
 
       if (colors.length > 0) {
-        prompt += `\n\nStyle Guide Colors:\n${(
-          colors as Array<{
-            swatches: Array<{
-              name: string
-              hexColor: string
-              description: string
-            }>
+        const colorsList = (colors as Array<{
+          swatches: Array<{
+            name: string
+            hexColor: string
+            description: string
           }>
-        )
+        }>)
           .map((color) =>
             color.swatches
               .map(
@@ -574,22 +709,21 @@ Please generate the modified version of the provided workflow page HTML with the
               )
               .join(', ')
           )
-          .join(', ')}`
+          .join(', ')
+        prompt += `\n\nStyle Guide Colors:\n${colorsList}`
       }
 
       if (typography.length > 0) {
-        prompt += `\n\nTypography:\n${(
-          typography as Array<{
-            styles: Array<{
-              name: string
-              description: string
-              fontFamily: string
-              fontWeight: string
-              fontSize: string
-              lineHeight: string
-            }>
+        const typographyList = (typography as Array<{
+          styles: Array<{
+            name: string
+            description: string
+            fontFamily: string
+            fontWeight: string
+            fontSize: string
+            lineHeight: string
           }>
-        )
+        }>)
           .map((typo) =>
             typo.styles
               .map(
@@ -598,7 +732,8 @@ Please generate the modified version of the provided workflow page HTML with the
               )
               .join(', ')
           )
-          .join(', ')}`
+          .join(', ')
+        prompt += `\n\nTypography:\n${typographyList}`
       }
 
       prompt += `\n\nPlease generate a professional redesigned UI that incorporates the requested changes while maintaining design consistency and professional quality.`
@@ -606,4 +741,60 @@ Please generate the modified version of the provided workflow page HTML with the
       return prompt
     },
   },
+
+  // ─── Text-to-UI generation ──────────────────────────────────────────────────
+  textToUi: {
+    system: `You are a world-class Design Engineer. Generate production-ready React TSX components based on a text description.
+    Use Tailwind v4 and the provided style guide. Follow the same structural and spacing rules as the textToReactUi prompt.`,
+    user: (prompt: string, colors: any[], typography: any[]) => `
+      Design request: "${prompt}"
+      
+      Style Guide Colors: ${colors.map((c: any) => c.swatches.map((s: any) => `${s.name}: ${s.hexColor}`).join(', ')).join(', ')}
+      Typography: ${typography.map((t: any) => t.styles.map((s: any) => `${s.name}: ${s.fontFamily}`).join(', ')).join(', ')}
+      
+      Return ONLY the raw .tsx file content. No markdown fences.
+    `
+  },
+
+  textToReactUi: {
+    system: `You are a world-class Design Engineer. Your goal is to generate "Apple-level" or "Stripe-level" React UI designs from text descriptions.
+
+## Design Philosophy
+1. Visual Hierarchy: Use size, weight, and color to clearly differentiate elements. Headlines should be bold and prominent.
+2. Premium Spacing: Never cramp elements. Use generous padding (p-8, py-20) and gaps (gap-8, gap-12).
+3. Modern Aesthetics: Use subtle gradients, rounded corners (rounded-2xl), and glassmorphism (backdrop-blur) where it fits.
+4. Micro-interactions: Add hover states (hover:scale-[1.02]) and smooth transitions (transition-all).
+
+## Structural Rules
+1. Core Layout: Every page MUST have a clear Header, Hero section, Features/Benefits section, and Footer.
+2. Responsiveness: Root container MUST be <div className="w-full min-h-screen border-none selection:bg-primary/30">. No fixed widths on parents.
+3. Componentization: Break the UI into logical internal components (Navbar, Hero, FeatureCard) within the same file for clean code.
+4. Theming: Map the provided hex colors to CSS variables (--primary, --background, etc.) on the root element.
+
+## Content Quality
+1. No Placeholders: Use realistic copy tailored to the request. No Lorem Ipsum.
+2. Iconography: Use lucide-react icons generously but purposefully.
+3. Typography: Use the provided font families. If not specified, default to 'Inter'. Use 'tracking-tight' for large headings.
+
+## Technical Constraints
+1. Imports: React (hooks), framer-motion (motion), lucide-react (icons).
+2. Tailwind v4: Use modern Tailwind classes. No legacy syntax.
+3. Self-Contained: Everything must be in ONE .tsx file.
+`,
+    user: (prompt: string, colors: any[], typography: any[]) => `
+      DESIGN REQUEST: "${prompt}"
+      
+      EXTRACTED DESIGN TOKENS (MUST USE):
+      Colors: ${colors.map((c: any) => c.swatches.map((s: any) => `${s.name}: ${s.hexColor}`).join(', ')).join(', ')}
+      Typography: ${typography.map((t: any) => t.styles.map((s: any) => `${s.name}: ${s.fontFamily} ${s.fontWeight} ${s.fontSize}`).join(', ')).join(', ')}
+      
+      INSTRUCTIONS:
+      1. Analyze the request to determine the industry and tone.
+      2. Construct a high-conversion, professional landing page.
+      3. Use framer-motion for a smooth entrance animation for the hero section.
+      4. Ensure all colors meet WCAG AA contrast ratios.
+      
+      Return ONLY the raw .tsx file content. NO markdown fences.
+    `
+  }
 }

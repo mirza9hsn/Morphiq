@@ -16,12 +16,14 @@ const ShapeRenderer = ({
     toggleChat,
     generateWorkflow,
     exportDesign,
+    isSelected,
 }: {
     shape: Shape
     toggleInspiration?: () => void
     toggleChat?: (generatedUIId: string) => void
     generateWorkflow?: (generatedUIId: string) => void
     exportDesign?: (generatedUIId: string, element: HTMLElement | null) => void
+    isSelected?: boolean
 }) => {
 
     switch (shape.type) {
@@ -51,6 +53,7 @@ const ShapeRenderer = ({
                     toggleChat={toggleChat ?? (() => { })}
                     generateWorkflow={generateWorkflow ?? (() => { })}
                     exportDesign={exportDesign ?? (() => { })}
+                    isSelected={isSelected}
                 />
             )
         default:

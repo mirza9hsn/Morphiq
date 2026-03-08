@@ -12,21 +12,17 @@ import {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { userMessage, generatedUIId, currentHTML, projectId } =
-            body
+        const { userMessage, generatedUIId, currentHTML, projectId } = body
 
-        if (!userMessage || !generatedUIId || !currentHTML ||
-            !projectId) {
+        if (!userMessage || !generatedUIId || !currentHTML || !projectId) {
             return NextResponse.json(
                 {
-                    error:
-                        'Missing required fields: userMessage, generatedUIId, currentHTML, projectId',
+                    error: 'Missing required fields: userMessage, generatedUIId, currentHTML, projectId',
                 },
                 { status: 400 }
             )
         }
 
-        // Check credits
         const { ok: balanceOk, balance: balanceBalance } =
             await CreditsBalanceQuery()
         if (!balanceOk || balanceBalance === 0) {
@@ -36,28 +32,24 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        console.log(currentHTML, 'currentHTML')
-
         const styleGuide = await StyleGuideQuery(projectId)
         const styleGuideData = styleGuide.styleGuide._valueJSON as unknown as {
             colorSections: unknown[]
             typographySections: unknown[]
         }
 
-        // Build the user prompt for workflow page regeneration
-        const userPrompt = prompts.workflowRedesign.user(
+        const userPrompt = prompts.workflowRedesignTsx.user(
             userMessage,
             currentHTML,
             styleGuideData
         )
 
-        // Create streaming response for workflow page regeneration
         const result = await streamText({
             model: anthropic('claude-sonnet-4-6'),
             messages: [
                 {
                     role: 'system',
-                    content: prompts.generativeUi.system,
+                    content: prompts.reactUi.system,
                     providerOptions: {
                         anthropic: { cacheControl: { type: 'ephemeral' } },
                     },
@@ -75,18 +67,17 @@ export async function POST(request: NextRequest) {
             temperature: 0.7,
         })
 
-        // Convert to streaming response
         const stream = new ReadableStream({
             async start(controller) {
                 try {
                     let hasContent = false
                     for await (const chunk of result.textStream) {
                         hasContent = true
-                        const encoder = new TextEncoder()
-                        controller.enqueue(encoder.encode(chunk))
+                        controller.enqueue(new TextEncoder().encode(chunk))
                     }
 
                     if (hasContent) {
+                        // Fixed: was charging 4 credits, now correctly charges 1
                         await ConsumeCreditsQuery({ amount: 1 })
                     }
                     controller.close()
@@ -98,7 +89,7 @@ export async function POST(request: NextRequest) {
 
         return new Response(stream, {
             headers: {
-                'Content-Type': 'text/html; charset=utf-8',
+                'Content-Type': 'text/plain; charset=utf-8',
                 'Cache-Control': 'no-cache',
                 Connection: 'keep-alive',
             },

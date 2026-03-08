@@ -8,12 +8,21 @@ import { downloadBlob, exportGeneratedUIAsPNG, generateFrameSnapshot } from "@/l
 import { nanoid } from "@reduxjs/toolkit"
 import { toast } from "sonner"
 import { useGenerateWorkflowMutation } from "@/redux/api/generation"
-import { addErrorMessage, addUserMessage, clearChat, finishStreamingResponse, initializeChat, startStreamingResponse, updateStreamingContent } from "@/redux/slice/chat"
+import { addErrorMessage, addUserMessage, clearChat, finishStreamingResponse, initializeChat, startStreamingResponse, updateStreamingContent, setActiveChatId } from "@/redux/slice/chat"
 
 
 
 
 
+
+/** Extracts the PascalCase default-export name from a generated TSX string. */
+function extractComponentName(tsx: string): string {
+    const match =
+        tsx.match(/export\s+default\s+function\s+(\w+)/) ||
+        tsx.match(/function\s+(\w+)[^{]*\{/) ||
+        tsx.match(/export\s+default\s+(\w+)/)
+    return match?.[1] ?? 'GeneratedComponent'
+}
 
 interface TouchPointer {
     id: number
@@ -684,7 +693,8 @@ export const useInfiniteCanvas = () => {
             if (
                 shape.type === 'frame' ||
                 shape.type === 'rect' ||
-                shape.type === 'ellipse'
+                shape.type === 'ellipse' ||
+                shape.type === 'generatedui'
             ) {
                 dispatch(
                     updateShape({
@@ -934,7 +944,7 @@ export const useFrame = (shape: FrameShape) => {
             }
 
             const decoder = new TextDecoder()
-            let accumulatedMarkup = ''
+            let accumulatedTsx = ''
 
             let lastUpdateTime = 0
             const UPDATE_THROTTLE_MS = 200
@@ -943,27 +953,31 @@ export const useFrame = (shape: FrameShape) => {
                 while (true) {
                     const { done, value } = await reader.read()
                     if (done) {
-                        // Update with final accumulated markup
+                        // Stream complete — extract component name and commit to uiSpecData
+                        const componentName = extractComponentName(accumulatedTsx)
                         dispatch(
                             updateShape({
                                 id: generatedUIId,
-                                patch: { uiSpecData: accumulatedMarkup },
+                                patch: {
+                                    uiSpecData: accumulatedTsx,
+                                    componentName,
+                                    streamingTsx: null,
+                                },
                             })
                         )
                         break
                     }
 
-                    // Decode and accumulate the text markup text
                     const chunk = decoder.decode(value, { stream: true })
-                    accumulatedMarkup += chunk
+                    accumulatedTsx += chunk
 
-                    // Existing throttling logic:
+                    // Live-update Code Tab with streaming TSX (uiSpecData stays null until complete)
                     const now = Date.now()
                     if (now - lastUpdateTime >= UPDATE_THROTTLE_MS) {
                         dispatch(
                             updateShape({
                                 id: generatedUIId,
-                                patch: { uiSpecData: accumulatedMarkup },
+                                patch: { streamingTsx: accumulatedTsx },
                             })
                         )
                         lastUpdateTime = now
@@ -1098,21 +1112,35 @@ export const useWorkflowGeneration = () => {
 
                             const reader = response.body?.getReader()
                             const decoder = new TextDecoder()
-                            let accumulatedHTML = ''
+                            let accumulatedTsx = ''
 
                             if (reader) {
                                 while (true) {
                                     const { done, value } = await reader.read()
-                                    if (done) break
+                                    if (done) {
+                                        // Stream complete — commit TSX and extract component name
+                                        const componentName = extractComponentName(accumulatedTsx)
+                                        dispatch(
+                                            updateShape({
+                                                id: workflowId,
+                                                patch: {
+                                                    uiSpecData: accumulatedTsx,
+                                                    componentName,
+                                                    streamingTsx: null,
+                                                },
+                                            })
+                                        )
+                                        break
+                                    }
 
                                     const chunk = decoder.decode(value)
-                                    accumulatedHTML += chunk
+                                    accumulatedTsx += chunk
 
-                                    // Update the workflow page with streamed HTML
+                                    // Stream to Code Tab live
                                     dispatch(
                                         updateShape({
                                             id: workflowId,
-                                            patch: { uiSpecData: accumulatedHTML },
+                                            patch: { streamingTsx: accumulatedTsx },
                                         })
                                     )
                                 }
@@ -1163,6 +1191,7 @@ export const useWorkflowGeneration = () => {
 
 //TODO: add chat window complete the open chat close chat and toggle
 export const useGlobalChat = () => {
+    const dispatch = useAppDispatch()
     const [isChatOpen, setIsChatOpen] = useState(false)
     const [activeGeneratedUIId, setActiveGeneratedUIId] = useState<string | null>(
         null
@@ -1202,6 +1231,9 @@ export const useGlobalChat = () => {
     }
 
     const toggleChat = (generatedUIId: string) => {
+        // Dispatch to Redux to sync with selection logic
+        dispatch(setActiveChatId(generatedUIId))
+
         if (isChatOpen && activeGeneratedUIId === generatedUIId) {
             closeChat()
         } else {
@@ -1290,9 +1322,9 @@ export const useChatWindow = (generatedUIId: string, isOpen: boolean) => {
             const baseRequestData = {
                 userMessage: message,
                 generatedUIId: generatedUIId,
-                currentHTML:
+                currentTsx:
                     currentShape?.type === 'generatedui' ? currentShape.uiSpecData : null,
-                projectId: projectId, // Pass projectId in body
+                projectId: projectId,
             }
 
             let apiEndpoint = '/api/generate/redesign'
@@ -1343,16 +1375,29 @@ export const useChatWindow = (generatedUIId: string, isOpen: boolean) => {
 
             const reader = response.body?.getReader()
             const decoder = new TextDecoder()
-            let accumulatedHTML = ''
+            let accumulatedTsx = ''
             if (reader) {
                 while (true) {
                     const { done, value } = await reader.read()
-                    if (done) break
+                    if (done) {
+                        // Stream complete — commit TSX and extract component name
+                        const componentName = extractComponentName(accumulatedTsx)
+                        dispatch(
+                            updateShape({
+                                id: generatedUIId,
+                                patch: {
+                                    uiSpecData: accumulatedTsx,
+                                    componentName,
+                                    streamingTsx: null,
+                                },
+                            })
+                        )
+                        break
+                    }
 
                     const chunk = decoder.decode(value)
-                    accumulatedHTML += chunk
+                    accumulatedTsx += chunk
 
-                    // Update streaming message with "Regenerating design..."
                     dispatch(
                         updateStreamingContent({
                             generatedUIId,
@@ -1361,11 +1406,11 @@ export const useChatWindow = (generatedUIId: string, isOpen: boolean) => {
                         })
                     )
 
-                    // Update the GeneratedUI shape with new HTML in real-time
+                    // Stream live TSX to Code Tab
                     dispatch(
                         updateShape({
                             id: generatedUIId,
-                            patch: { uiSpecData: accumulatedHTML },
+                            patch: { streamingTsx: accumulatedTsx },
                         })
                     )
                 }

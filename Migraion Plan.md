@@ -33,9 +33,9 @@ Claude outputs: complete .tsx file using @morphiq/ui sections + shadcn atoms
         ↓
 /api/bundle — Sucrase transforms JSX→ES module JS (server-side, no WASM)
         ↓
-Client builds srcdoc: importmap + component JS + style guide CSS vars
+Client builds srcdoc: importmap (pinned v18.3.1) + component JS + style guide CSS vars
         ↓
-<iframe srcdoc> renders the full interactive React page
+<iframe srcdoc> — Robust srcdoc with separate error catcher + ESM version pinning
 Canvas shape: skeleton while loading → iframe when ready
 ```
 
@@ -60,7 +60,6 @@ Canvas shape: skeleton while loading → iframe when ready
 
 ```bash
 npm install sucrase           # Server-side JSX→JS transform (pure JS, no WASM, serverless-safe)
-npm install -D esbuild        # Build-time component pre-compilation (devDependency)
 npm install jszip             # Code export ZIP (Phase 4)
 ```
 

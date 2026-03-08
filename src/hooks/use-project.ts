@@ -8,6 +8,9 @@ import { toast } from 'sonner'
 import { Id } from '../../convex/_generated/dataModel'
 
 
+import { useRouter } from 'next/navigation'
+
+
 const generateGradientThumbnail = () => {
     const gradients = [
         "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -41,9 +44,9 @@ const generateGradientThumbnail = () => {
 
 export const useProjectCreation = () => {
     const dispatch = useAppDispatch()
+    const router = useRouter()
     const user = useAppSelector((state) => state.profile.user)
     const projectsState = useAppSelector((state) => state.projects)
-    const shapesState = useAppSelector((state) => state.shapes)
 
     const createProject = async (name?: string) => {
         if (!user?.id) {
@@ -54,15 +57,18 @@ export const useProjectCreation = () => {
         try {
             const thumbnail = generateGradientThumbnail()
 
+            // Initialize with empty canvas state
+            const emptySketchesData = {
+                shapes: { ids: [], entities: {} },
+                tool: 'select',
+                selected: {},
+                frameCounter: 0,
+            }
+
             const result = await fetchMutation(api.projects.createProject, {
                 userId: user.id as Id<'users'>,
                 name: name || undefined,
-                sketchesData: {
-                    shapes: shapesState.shapes,
-                    tool: shapesState.tool,
-                    selected: shapesState.selected,
-                    frameCounter: shapesState.frameCounter,
-                },
+                sketchesData: emptySketchesData,
                 thumbnail,
             })
 
@@ -79,6 +85,10 @@ export const useProjectCreation = () => {
             )
             dispatch(createProjectSuccess())
             toast.success('Project created successfully!')
+
+            // Navigate to the new project
+            router.push(`/dashboard/${user.name}/canvas?project=${result.projectId}`)
+
         } catch (error) {
             dispatch(createProjectFailure('Failed to create project'))
             toast.error('Failed to create project')

@@ -17,10 +17,12 @@ export interface GeneratedUIChat {
 
 interface ChatState {
     chats: Record<string, GeneratedUIChat>; // Key: generatedUIId
+    activeChatId: string | null;
 }
 
 const initialState: ChatState = {
     chats: {},
+    activeChatId: null,
 };
 
 const chatSlice = createSlice({
@@ -156,6 +158,13 @@ const chatSlice = createSlice({
         removeChat: (state, action: PayloadAction<string>) => {
             const generatedUId = action.payload
             delete state.chats[generatedUId]
+            if (state.activeChatId === generatedUId) {
+                state.activeChatId = null
+            }
+        },
+
+        setActiveChatId: (state, action: PayloadAction<string | null>) => {
+            state.activeChatId = action.payload
         },
     },
 });
@@ -169,6 +178,7 @@ export const {
     addErrorMessage,
     clearChat,
     removeChat,
+    setActiveChatId,
 } = chatSlice.actions
 
 export default chatSlice.reducer
